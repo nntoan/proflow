@@ -7,6 +7,9 @@
 	"commandcode": {
 		"mods": ["./mods/proflow.ts"]
 	},
+	"bin": {
+		"proflow": "./scripts/install.mjs"
+	},
 	"files": [
 		"mods/",
 		"commands/",
@@ -14,14 +17,17 @@
 		"references/",
 		"agents/",
 		"docs/",
+		"scripts/install.mjs",
 		"README.md",
 		"LICENSE",
 		"LICENSE.agent-skills",
 		"VENDOR.json"
 	],
 	"scripts": {
-		"test": "node --disable-warning=ExperimentalWarning test/smoke.mjs",
-		"sync": "node scripts/sync-upstream.mjs"
+		"test": "node --disable-warning=ExperimentalWarning test/smoke.mjs && node --disable-warning=ExperimentalWarning test/install.mjs",
+		"sync": "node scripts/sync-upstream.mjs",
+		"proflow:install": "node scripts/install.mjs install",
+		"proflow:uninstall": "node scripts/install.mjs uninstall"
 	},
 	"keywords": [
 		"commandcode",

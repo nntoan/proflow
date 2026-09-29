@@ -1,0 +1,88 @@
+#!/usr/bin/env node
+// Installer test: provisions into a throwaway project and asserts the layout,
+// idempotency, collision protection, and clean uninstall — no Command Code needed.
+//
+// Run: node test/install.mjs
+
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {dirname, join, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const INSTALLER = join(ROOT, 'scripts', 'install.mjs');
+const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+
+const proj = mkdtempSync(join(tmpdir(), 'proflow-install-'));
+mkdirSync(join(proj, '.git'));
+const cc = join(proj, '.commandcode');
+const manifestPath = join(cc, 'proflow.manifest.json');
+
+const run = (...args) =>
+	execFileSync(process.execPath, [INSTALLER, ...args, '--project', proj], {encoding: 'utf8'});
+
+const checks = [];
+const check = (name, fn) => {
+	fn();
+	checks.push(name);
+};
+
+check('install provisions mod, skills, agents, and a manifest', () => {
+	run('install');
+	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'mods', 'proflow.ts')));
+	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'commands', 'spec.md')));
+	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'skills', 'test-driven-development', 'SKILL.md')));
+	assert.equal(readdirSync(join(cc, 'skills')).length, 25);
+	assert.equal(readdirSync(join(cc, 'agents')).length, 4);
+	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+	assert.equal(manifest.version, pkg.version);
+	assert.equal(manifest.skills.length, 25);
+});
+
+check('install is idempotent and re-runs cleanly', () => {
+	run('install');
+	assert.equal(readdirSync(join(cc, 'skills')).length, 25);
+	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'package.json')));
+});
+
+check('a foreign skill of the same name is not clobbered', () => {
+	// Make one provisioned skill look foreign: sentinel it, drop it from the manifest.
+	const sentinel = join(cc, 'skills', 'idea-refine', 'SKILL.md');
+	writeFileSync(sentinel, 'FOREIGN');
+	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+	manifest.skills = manifest.skills.filter(name => name !== 'idea-refine');
+	writeFileSync(manifestPath, JSON.stringify(manifest));
+
+	const out = run('install');
+	assert.match(out, /idea-refine.*skipping/i);
+	assert.equal(readFileSync(sentinel, 'utf8'), 'FOREIGN');
+
+	run('install', '--force');
+	assert.notEqual(readFileSync(sentinel, 'utf8'), 'FOREIGN');
+});
+
+check('uninstall removes proflow files and leaves foreign ones', () => {
+	const keep = join(cc, 'skills', 'foreign-skill');
+	mkdirSync(keep, {recursive: true});
+	writeFileSync(join(keep, 'SKILL.md'), 'keep me');
+
+	run('uninstall');
+	assert.ok(!existsSync(join(cc, 'mods', 'proflow')));
+	assert.ok(!existsSync(manifestPath));
+	assert.ok(!existsSync(join(cc, 'skills', 'idea-refine')));
+	assert.ok(!existsSync(join(cc, 'agents', 'code-reviewer.md')));
+	assert.ok(existsSync(join(keep, 'SKILL.md')), 'foreign skill must survive uninstall');
+});
+
+check('status reflects an uninstalled scope', () => {
+	const out = run('status');
+	assert.match(out, /not installed/i);
+});
+
+rmSync(proj, {recursive: true, force: true});
+
+console.log(`\n✓ proflow installer test — ${checks.length} checks passed\n`);
+for (const name of checks) console.log(`  ✓ ${name}`);
+console.log('');
