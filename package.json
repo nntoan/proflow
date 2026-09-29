@@ -1,0 +1,38 @@
+{
+	"name": "@nntoan/proflow",
+	"version": "0.1.0",
+	"description": "Command Code mod that deep-integrates addyosmani/agent-skills — 25 engineering skills plus the /spec, /to-plan, /build, /test, /to-review and /ship lifecycle commands.",
+	"license": "MIT",
+	"type": "commonjs",
+	"commandcode": {
+		"mods": ["./mods/proflow.ts"]
+	},
+	"files": [
+		"mods/",
+		"commands/",
+		"skills/",
+		"references/",
+		"agents/",
+		"docs/",
+		"README.md",
+		"LICENSE",
+		"LICENSE.agent-skills",
+		"VENDOR.json"
+	],
+	"scripts": {
+		"test": "node --disable-warning=ExperimentalWarning test/smoke.mjs",
+		"sync": "node scripts/sync-upstream.mjs"
+	},
+	"keywords": [
+		"commandcode",
+		"commandcode-mod",
+		"agent-skills",
+		"proflow",
+		"spec-driven-development",
+		"test-driven-development",
+		"code-review"
+	],
+	"engines": {
+		"node": ">=18"
+	}
+}
