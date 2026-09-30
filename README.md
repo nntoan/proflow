@@ -38,7 +38,8 @@ npx @nntoan/proflow status             # show what is installed
 
 Flags: `--force` (overwrite a same-named skill proflow does not own), `--dry-run`, `--no-skills`,
 `--no-agents`, `--commands` (also drop native command files — only needed if you don't load the
-mod), and `--mcp <name>` (bundle an MCP server — see [Bundled MCP servers](#bundled-mcp-servers)).
+mod), `--mcp <name>` (bundle an MCP server — see [Bundled MCP servers](#bundled-mcp-servers)), and
+`--component <name>` (install an optional component — see [Components](#components)).
 
 What lands where, under the target scope's `.commandcode/`:
 
@@ -84,6 +85,44 @@ at the repo root, and `cmd mcp list` showing the server enabled does not create 
 with `codegraph init` (it creates `.codegraph/`), then the model will reach for
 `codegraph_explore` before grep. `/idea` and `/spec`'s recon step explicitly prefer CodeGraph when
 it is available.
+
+## Components
+
+A component is an optional, separately-installable bundle — its own skills, commands, agents, and
+hooks — vendored under `components/`. Install one with `--component <name>`:
+
+```bash
+npx @nntoan/proflow install --component magento2
+```
+
+### `magento2`
+
+End-to-end Magento 2 engineering, adapted from
+[muon-m2/magento2-tools](https://github.com/muon-m2/magento2-tools) (MIT, v2.3.0):
+
+| Adds | Detail |
+| --- | --- |
+| 36 skills | prefixed `m2-` (`m2-fix`, `m2-context`, `m2-audit`, `m2-review`, `m2-scaffold`, …) so the generic upstream names (`context`, `review`, `test`, …) can't shadow other skills, proflow's commands, or built-ins |
+| 18 commands | `m2-*` forwarders (`/m2-audit`, `/m2-bugfix`, `/m2-review`, `/m2-deploy`, …) |
+| 2 agents | `reviewer` and `explorer` (read-only), with tool ids mapped to Command Code |
+| 1 hook | a `PreToolUse` guard that keeps `.docs/` artifacts at the project root |
+
+magento2-tools is a Claude Code plugin, so `scripts/sync-magento2.mjs` adapts it while vendoring:
+skill namespacing (`m2-`), `${CLAUDE_PLUGIN_ROOT}/skills/X` → `${COMMANDCODE_SKILL_DIR}/../m2-X`,
+`.claude/m2.json` → `.commandcode/m2.json`, `CLAUDE.md` → `AGENTS.md`, agent tool ids
+(`Glob`→`glob`, `Read`→`read_file`, `Bash`→`shell_command`), and the guard hook's tool ids +
+`COMMANDCODE_PROJECT_DIR`. The agents keep their upstream names, so a user-defined agent named
+`reviewer` or `explorer` would take precedence. The `M2_*` env overrides (e.g. `M2_PHP_CONTAINER`)
+work unchanged.
+
+Refresh the vendored copy:
+
+```bash
+npm run sync:magento2           # tracks main
+npm run sync:magento2 v2.3.0    # pin a tag
+```
+
+Provenance is recorded in `components/magento2/VENDOR.json`.
 
 ## Commands
 
@@ -195,6 +234,8 @@ Set options at launch with `--mod-option name=value`:
 | `skills/`, `references/`, `agents/` (rest), `docs/agents.md` | Vendored verbatim from addyosmani/agent-skills. |
 | `scripts/install.mjs` | The installer (`npx @nntoan/proflow install|uninstall|status`) — the `proflow` bin. |
 | `scripts/sync-upstream.mjs` | Re-vendors the upstream content (`npm run sync [ref]`). |
+| `scripts/sync-magento2.mjs` | Vendors + adapts the magento2-tools component (`npm run sync:magento2 [ref]`). |
+| `components/magento2/` | The vendored magento2 component (skills, commands, agents, hooks). |
 | `test/smoke.mjs`, `test/install.mjs` | Mod-surface and installer tests (`npm test`). |
 
 Refresh the vendored content:
@@ -209,7 +250,7 @@ Provenance for the vendored snapshot is recorded in `VENDOR.json`.
 ## Verify
 
 ```bash
-npm test                # mod surface (19) + installer (6) checks
+npm test                # mod surface (19) + installer (7) checks
 cmd mods list           # proflow listed, no load warnings
 cmd skills list         # 25 project skills after an install
 ```
