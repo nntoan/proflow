@@ -1,7 +1,7 @@
 # Remediation Commit Format
 
 One finding, one commit. That is the whole rule, and it is what makes a remediation run
-reviewable: a reviewer can read the history and see exactly which change was made because of
+reviewable: a m2-reviewer can read the history and see exactly which change was made because of
 which finding, and revert one without unpicking the rest.
 
 ```
@@ -72,5 +72,5 @@ both modules in the subject as `{ModuleA}+{ModuleB}` and every path in `Files:`.
 
 Commits land on `remediation/{slug}`. This skill does not push, open a pull request, or merge.
 The branch, its per-finding history and the run report are handed back for review — the
-closure diff says what actually closed, and that is a reviewer's decision to act on, not this
+closure diff says what actually closed, and that is a m2-reviewer's decision to act on, not this
 skill's.

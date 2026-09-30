@@ -39,7 +39,7 @@ never modifies templates and does not require a running Magento instance.
 Default: **inline**. In `agents` mode (`--agents` flag, or `execution_mode` in
 `.commandcode/m2.json` surfaced as `{ctx.execution_mode}` — selection contract in
 `context/references/execution-modes.md`) the judgement
-passes of this skill are dispatched to the read-only `reviewer` agent with a frontend/accessibility
+passes of this skill are dispatched to the read-only `m2-reviewer` agent with a frontend/accessibility
 dimension brief, and this skill owns synthesis. The scripted scanners
 (`scripts/build-findings.sh`) are deterministic and run identically in both modes.
 

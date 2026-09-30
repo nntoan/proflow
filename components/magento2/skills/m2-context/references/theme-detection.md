@@ -137,7 +137,7 @@ Downstream skills behave differently per theme:
   when `theme.frontend` is `null`; instead, ask the user.
 - `m2-review` reads `theme.frontend_source` to decide whether RequireJS
   checks apply; if the source contains "installed, active-theme unverified", the
-  reviewer notes the uncertainty in the finding.
+  m2-reviewer notes the uncertainty in the finding.
 - `m2-module-create` `frontend_ui` surface should also branch on the source
   string, not just the value.
 

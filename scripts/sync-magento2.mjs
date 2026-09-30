@@ -4,223 +4,99 @@
 //   node scripts/sync-magento2.mjs [ref]
 //
 // magento2-tools is a Claude Code plugin, so its content assumes a Claude
-// environment. This script clones it, transforms the parts that do not hold in
-// Command Code, and writes the result to components/magento2/. The transform is
-// deliberately conservative — each rule is one of:
-//
-//   1. Skill namespacing    `context` -> `m2-context` (dir + `name:` + refs),
-//                           so the 36 generic upstream names (context, review,
-//                           test, security, …) can't shadow other skills, the
-//                           proflow commands, or Command Code built-ins.
-//   2. Cross-skill refs     `magento2-tools:fix` -> `m2-fix`, and bare
-//                           backticked `` `fix` `` -> `` `m2-fix` ``.
-//   3. Plugin-root paths    ${CLAUDE_PLUGIN_ROOT}/skills/X/... ->
-//                           ${COMMANDCODE_SKILL_DIR}/../m2-X/... (Command Code
-//                           installs skills flat, so the plugin root is the
-//                           skills directory).
-//   4. Config/memory paths  .claude/m2.json -> .commandcode/m2.json, CLAUDE.md ->
-//                           AGENTS.md, so the resolver reads Command Code's
-//                           locations (the M2_* env overrides still win).
-//   5. Agent tool ids       Glob/Grep/Read/Bash -> glob/grep/read_file/shell_command.
-//
-// Agents keep their names (`reviewer`, `explorer`) because the skills reference
-// them in prose; that carries a small collision risk with a user's own agent of
-// the same name, which the README documents.
+// environment. This script clones it and applies the declarative rules in
+// `scripts/patches/magento2.mjs` through the shared vendoring engine
+// (`scripts/lib/vendor.mjs`) — the same machinery `sync-upstream.mjs` uses, so
+// there is one declarative path and no duplicated logic. See that patch module
+// for what each rule does (namespacing, plugin-root paths, config locations,
+// agent rename + tool ids, dev-file exclusion).
 //
 // The generated tree is committed, so installing never needs the network.
 
-import {execFileSync} from 'node:child_process';
-import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdtempSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {cleanup, clone, copyFile, copyTree, readJson, writeRecord} from './lib/vendor.mjs';
+import * as m2 from './patches/magento2.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'components', 'magento2');
 const REF = process.argv[2] || 'main';
 const REPO = process.env.MAGENTO2_TOOLS_REPO || 'https://github.com/muon-m2/magento2-tools.git';
 
-const AGENT_TOOLS = {
-	Glob: 'glob',
-	Grep: 'grep',
-	Read: 'read_file',
-	Write: 'write_file',
-	Edit: 'edit_file',
-	MultiEdit: 'edit_file',
-	LS: 'read_directory',
-	Bash: 'shell_command',
-	WebFetch: 'web_fetch',
-	WebSearch: 'web_search',
-	TodoWrite: 'todo_write',
-};
+const list = dir => (existsSync(dir) ? readdirSync(dir) : []);
+const base = file => file.replace(/\.md$/, '');
 
 const stage = mkdtempSync(join(tmpdir(), 'magento2-tools-'));
 try {
 	console.log(`Cloning ${REPO} @ ${REF} …`);
-	execFileSync('git', ['clone', '--depth', '1', '--branch', REF, REPO, stage], {stdio: 'inherit'});
-	const commit = execFileSync('git', ['-C', stage, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-	const plugin = JSON.parse(readFileSync(join(stage, '.claude-plugin', 'plugin.json'), 'utf8'));
+	const {commit} = clone(REPO, REF, stage);
+	const plugin = readJson(join(stage, '.claude-plugin', 'plugin.json'), {});
 
-	const skillNames = readdirSync(join(stage, 'skills')).filter(name =>
+	const skillNames = list(join(stage, 'skills')).filter(name =>
 		existsSync(join(stage, 'skills', name, 'SKILL.md')),
 	);
-	const skillSet = new Set(skillNames);
+	const withGeneric = text => m2.transform(text, skillNames);
 
-	function transform(text) {
-		let out = text;
-		// 3. plugin-root script paths -> relative to the current skill dir
-		out = out.replace(/\$\{CLAUDE_PLUGIN_ROOT\}\/skills\/([a-z0-9-]+)\//g, (_m, s) => `\${COMMANDCODE_SKILL_DIR}/../m2-${s}/`);
-		out = out.replace(/\$\{CLAUDE_PLUGIN_ROOT\}\/agents\//g, '${COMMANDCODE_SKILL_DIR}/../../agents/');
-		out = out.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, '${COMMANDCODE_SKILL_DIR}/..');
-		// 2. cross-skill refs
-		out = out.replace(/magento2-tools:([a-z0-9-]+)/g, (_m, s) => `m2-${s}`);
-		for (const name of skillNames) {
-			out = out.split('`' + name + '`').join('`m2-' + name + '`');
-		}
-		// 4. config + memory locations
-		out = out.replace(/\.claude\/m2\.json/g, '.commandcode/m2.json');
-		out = out.replace(/\.claude\/\.cache/g, '.commandcode/.cache');
-		out = out.replace(/\.claude\/settings\.json/g, '.commandcode/settings.json');
-		out = out.replace(/\bCLAUDE\.md\b/g, 'AGENTS.md');
-		return out;
-	}
-
-	function writeTransformed(srcFile, destFile, extra) {
-		let text = transform(readFileSync(srcFile, 'utf8'));
-		if (extra) text = extra(text, srcFile);
-		mkdirSync(dirname(destFile), {recursive: true});
-		writeFileSync(destFile, text);
-	}
-
-	// Upstream writes `description:` as a plain multi-line scalar. Command Code's
-	// YAML parser rejects that when a continuation line contains ": " (e.g.
-	// "... the full lifecycle: requirement analysis ..."), which silently drops
-	// the skill. Normalise the description to a folded block scalar so it always
-	// parses; a value already written as `>-`/`|` is left alone.
-	function normalizeDescription(text) {
-		const fm = /^(---\r?\n)([\s\S]*?)(\r?\n---)/.exec(text);
-		if (!fm) return text;
-		const lines = fm[2].split(/\r?\n/);
-		const idx = lines.findIndex(line => /^description:/.test(line));
-		if (idx === -1) return text;
-		let end = idx + 1;
-		while (end < lines.length && !/^[A-Za-z0-9_-]+:/.test(lines[end])) end += 1;
-		const inline = lines[idx].replace(/^description:[ \t]*/, '');
-		if (/^[>|]/.test(inline)) return text;
-		const value = [inline, ...lines.slice(idx + 1, end).map(line => line.trim())]
-			.filter(Boolean)
-			.join(' ');
-		const rebuilt = [...lines.slice(0, idx), 'description: >-', `    ${value}`, ...lines.slice(end)];
-		return fm[1] + rebuilt.join('\n') + fm[3] + text.slice(fm[0].length);
-	}
-
-	function copyTree(srcDir, destDir, extraForSkillMd) {
-		for (const entry of readdirSync(srcDir)) {
-			const src = join(srcDir, entry);
-			const dest = join(destDir, entry);
-			if (statSync(src).isDirectory()) {
-				copyTree(src, dest, extraForSkillMd);
-				continue;
-			}
-			if (entry === 'SKILL.md' && extraForSkillMd) {
-				writeTransformed(src, dest, extraForSkillMd);
-				continue;
-			}
-			if (/\.(md|sh|mjs|js|json|php|xml|less|txt|yaml|yml)$/i.test(entry) || !/\./.test(entry)) {
-				writeTransformed(src, dest);
-			} else {
-				mkdirSync(dirname(dest), {recursive: true});
-				cpSync(src, dest);
-			}
-			if (statSync(src).mode & 0o111) {
-				try {
-					execFileSync('chmod', ['+x', dest]);
-				} catch {
-					// best effort
-				}
-			}
-		}
-	}
-
+	// Rebuild from scratch so removed/renamed files (reviewer.md, gen-routing.sh) don't linger.
 	rmSync(OUT, {recursive: true, force: true});
 
-	// Skills — prefix dir + `name:`, and make the description parse.
+	// Skills — namespaced dir + `name:`, descriptions made YAML-safe, dev files excluded.
 	for (const name of skillNames) {
-		const onSkillMd = text =>
-			normalizeDescription(text.replace(/^name:[ \t]*.*$/m, `name: m2-${name}`));
-		copyTree(join(stage, 'skills', name), join(OUT, 'skills', `m2-${name}`), onSkillMd);
+		copyTree(join(stage, 'skills', name), join(OUT, 'skills', `${m2.skillPrefix}${name}`), {
+			exclude: m2.exclude,
+			transform: (text, from) =>
+				from.endsWith('SKILL.md')
+					? m2.normalizeDescription(m2.setName(withGeneric(text), `${m2.skillPrefix}${name}`))
+					: withGeneric(text),
+		});
 	}
 
-	// Commands — rename to m2-<verb>.
-	const commandsDir = join(stage, 'commands');
-	const commandVerbs = existsSync(commandsDir)
-		? readdirSync(commandsDir).filter(f => f.endsWith('.md'))
-		: [];
-	for (const file of commandVerbs) {
-		writeTransformed(join(commandsDir, file), join(OUT, 'commands', `m2-${file}`), normalizeDescription);
+	// Commands — renamed to m2-<verb>.
+	const commands = list(join(stage, 'commands')).filter(file => file.endsWith('.md'));
+	for (const file of commands) {
+		copyFile(join(stage, 'commands', file), join(OUT, 'commands', `${m2.commandPrefix}${file}`), {
+			transform: text => m2.normalizeDescription(withGeneric(text)),
+		});
 	}
 
-	// Agents — keep names, fix tool ids.
-	const agentsDir = join(stage, 'agents');
-	const agentNames = existsSync(agentsDir) ? readdirSync(agentsDir).filter(f => f.endsWith('.md')) : [];
-	for (const file of agentNames) {
-		writeTransformed(join(agentsDir, file), join(OUT, 'agents', file), text =>
-			normalizeDescription(
-				text.replace(/^tools:[ \t]*(.*)$/m, (line, list) => {
-					const mapped = list
-						.split(',')
-						.map(t => t.trim())
-						.filter(Boolean)
-						.map(t => AGENT_TOOLS[t] || t)
-						.join(', ');
-					return `tools: ${mapped}`;
-				}),
-			),
-		);
+	// Agents — renamed to m2-<name>, `name:` set, tool ids mapped.
+	const agents = list(join(stage, 'agents')).filter(file => file.endsWith('.md'));
+	for (const file of agents) {
+		const renamed = m2.agentRename[base(file)] ?? base(file);
+		copyFile(join(stage, 'agents', file), join(OUT, 'agents', `${renamed}.md`), {
+			transform: text =>
+				m2.normalizeDescription(m2.setName(m2.mapTools(withGeneric(text)), renamed)),
+		});
 	}
 
-	// Hooks — adapt the PreToolUse guard to Command Code's tool ids + env. Hook
-	// filenames stay unprefixed (the guard sources its sibling by name); the
-	// installer namespaces them under .commandcode/hooks/m2/ instead.
-	const hooksDir = join(stage, 'hooks');
-	const hookFiles = existsSync(hooksDir) ? readdirSync(hooksDir).filter(f => f.endsWith('.sh')) : [];
-	for (const file of hookFiles) {
-		writeTransformed(join(hooksDir, file), join(OUT, 'hooks', file), text =>
-			text
-				.replace('Write|Edit)', 'write_file|edit_file|Write|Edit)')
-				.replace(
-					'project_root="${CLAUDE_PROJECT_DIR:-}"',
-					'project_root="${COMMANDCODE_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"',
-				),
-		);
-		execFileSync('chmod', ['+x', join(OUT, 'hooks', file)]);
-	}
+	// Hooks — adapted for Command Code's tool ids + env.
+	const hooks = list(join(stage, 'hooks')).filter(file => file.endsWith('.sh'));
+	copyTree(join(stage, 'hooks'), join(OUT, 'hooks'), {
+		exclude: ['hooks.json'],
+		transform: text => m2.adaptHook(withGeneric(text)),
+	});
 
 	cpSync(join(stage, 'LICENSE'), join(OUT, 'LICENSE'));
-	writeFileSync(
-		join(OUT, 'VENDOR.json'),
-		`${JSON.stringify(
-			{
-				source: 'https://github.com/muon-m2/magento2-tools',
-				repo: REPO,
-				ref: REF,
-				commit,
-				version: plugin.version,
-				transformedBy: 'scripts/sync-magento2.mjs',
-				syncedAt: new Date().toISOString(),
-			},
-			null,
-			2,
-		)}\n`,
-	);
+	writeRecord(join(OUT, 'VENDOR.json'), {
+		source: 'https://github.com/muon-m2/magento2-tools',
+		repo: REPO,
+		ref: REF,
+		commit,
+		version: plugin.version,
+		transform: 'scripts/patches/magento2.mjs',
+		excluded: m2.exclude,
+		syncedAt: new Date().toISOString(),
+	});
 
 	console.log(
 		`\nVendored magento2-tools ${plugin.version} (${commit.slice(0, 12)}) → ${relative(ROOT, OUT)}\n` +
-			`  skills   ${skillNames.length} (prefixed m2-)\n` +
-			`  commands ${commandVerbs.length} (renamed m2-)\n` +
-			`  agents   ${agentNames.length}\n` +
-			`  hooks    ${hookFiles.length}`,
+			`  skills   ${skillNames.length} (prefixed ${m2.skillPrefix})\n` +
+			`  commands ${commands.length} (renamed ${m2.commandPrefix})\n` +
+			`  agents   ${agents.length} (renamed ${Object.values(m2.agentRename).join(', ')})\n` +
+			`  hooks    ${hooks.length}`,
 	);
 } finally {
-	rmSync(stage, {recursive: true, force: true});
+	cleanup(stage);
 }

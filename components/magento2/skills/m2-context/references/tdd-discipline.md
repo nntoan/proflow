@@ -37,7 +37,7 @@ Strict red-green on scaffolding is theatre. Apply the loop to **behaviour**; exe
 | EAV source/backend **model** behaviour | Plain CRUD repository wiring (one integration round-trip) |
 | KO component public methods / view-model logic | `.phtml`, LESS, layout XML (cover via MFTF/smoke) |
 
-When in doubt: if a reviewer could break it without any test going red, it is behaviour — write
+When in doubt: if a m2-reviewer could break it without any test going red, it is behaviour — write
 the test first.
 
 ## The interface-first seam (for bulk-scaffolded code)

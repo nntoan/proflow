@@ -5,6 +5,10 @@ description: Creates specs before coding. Use when starting a new project, featu
 
 # Spec-Driven Development
 
+> **proflow:** run this through the `/spec` command. It adds parallel recon before
+> the interview and a `spec-reviewer` reflection loop before approval, and stores the
+> spec at `docs/spec/<id>/` (`SPEC.md`, `explore-brief.md`, `review-log.md`).
+
 ## Overview
 
 Write a structured specification before writing any code. The spec is the shared source of truth between you and the human engineer — it defines what we're building, why, and how we'll know it's done. Code without a spec is guessing.
@@ -62,7 +66,7 @@ Build order: identity → billing, notifications → reporting
 
 **The map is gated like every phase.** The human reviews module boundaries, dependency direction, and build order before any module spec is written. Getting the map wrong is expensive; reviewing ten lines is not.
 
-**Then recurse per module.** Run Specify → Plan → Tasks → Implement for each module in dependency order. Each module gets its own spec, scoped to that module's objective, boundaries, and success criteria. Save the approved map at the project root and each module's spec alongside it, named by module id (`SPEC-identity.md`, `SPEC-billing.md`) — the map, not filename guessing, is the index of what exists.
+**Then recurse per module.** Run Specify → Plan → Tasks → Implement for each module in dependency order. Each module gets its own spec, scoped to that module's objective, boundaries, and success criteria. Save the approved capability map and each module's spec under `docs/spec/<id>/` — one directory per spec (`SPEC.md`, `explore-brief.md`, `review-log.md`); the map, not filename guessing, is the index of what exists.
 
 ### Phase 1: Specify
 
@@ -246,6 +250,6 @@ Before proceeding to implementation, confirm:
 - [ ] The human has reviewed and approved the spec
 - [ ] Success criteria are specific and testable
 - [ ] Boundaries (Always/Ask First/Never) are defined
-- [ ] The spec is saved to a file in the repository
+- [ ] The spec is saved to `docs/spec/<id>/SPEC.md` (never a repository-root `SPEC.md`)
 - [ ] If the request bundles several independently testable capabilities, a capability map (module ids, dependency direction, build order) was approved before any module spec was written
 - [ ] Every module spec traces to a module id in the approved map

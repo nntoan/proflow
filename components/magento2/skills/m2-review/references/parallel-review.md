@@ -6,7 +6,7 @@ language ("use parallel agents", "delegate"), or `execution_mode` in `.commandco
 useful for large modules, security-sensitive modules, or modules with many independent
 surfaces. It is not required for small modules.
 
-The main reviewer must own final synthesis:
+The main m2-reviewer must own final synthesis:
 
 - Deduplicate overlapping findings.
 - Normalize severity across all subtask results.
@@ -26,7 +26,7 @@ When two subagents reach contradictory conclusions about the same code location,
    e.g., a missing ACL check on an admin route that accepts POST input is direct impact; a theoretical SQL injection
    risk where no user-controlled value reaches the query path is not). Downgrade otherwise and add a note explaining the
    disagreement.
-3. **Security reviewer takes precedence on security items.** For findings that touch auth, ACL, CSRF, escaping, or
+3. **Security m2-reviewer takes precedence on security items.** For findings that touch auth, ACL, CSRF, escaping, or
    secrets, the Security subtask result is authoritative. Other subtasks may flag the same item but must defer on
    severity.
 4. **Flag unresolved conflicts explicitly.** When none of the above rules produces a clear winner, include both
@@ -49,26 +49,26 @@ When two subagents reach contradictory conclusions about the same code location,
 
 ## Claude Code Agent Guidance
 
-Spawn subagents with the `Agent` tool. Prefer the plugin's first-party `subagent_type: 'reviewer'`
-(a read-only Magento reviewer that loads this checklist + the shared severity scale, defined in
-`agents/reviewer.md`) for the Security, Architecture, Frontend, Testing, and Performance
+Spawn subagents with the `Agent` tool. Prefer the plugin's first-party `subagent_type: 'm2-reviewer'`
+(a read-only Magento m2-reviewer that loads this checklist + the shared severity scale, defined in
+`agents/m2-reviewer.md`) for the Security, Architecture, Frontend, Testing, and Performance
 dimensions — dispatch one per subtask scope. Use `subagent_type: 'Explore'` for bounded evidence
-collection / file inventory when you only need files located, not judged. If `reviewer` is
+collection / file inventory when you only need files located, not judged. If `m2-reviewer` is
 unavailable in the session, fall back to `subagent_type: 'claude'`. Pass the module path and subtask
 scope in the prompt. Each subagent must receive a self-contained brief — it has no access to the
 parent conversation.
 
 For the **inventory / comprehension step** (understanding the module's execution paths, extension
 points, and cross-module dependencies before judging them), prefer
-`subagent_type: 'explorer'` (defined in `agents/explorer.md`) — it produces a
+`subagent_type: 'm2-explorer'` (defined in `agents/m2-explorer.md`) — it produces a
 structured comprehension map and Mermaid call-chain diagram. Fall back to `subagent_type: 'Explore'`
-if `explorer` is unavailable, then to `subagent_type: 'claude'`. Run the explorer step
-first; pass its comprehension map to the per-dimension `reviewer` subagents so they start
+if `m2-explorer` is unavailable, then to `subagent_type: 'claude'`. Run the m2-explorer step
+first; pass its comprehension map to the per-dimension `m2-reviewer` subagents so they start
 with a shared understanding of the module's structure. The per-dimension judging still uses
-`reviewer`. When dispatching `explorer`, pass `model` from the `AGENTS.md`
+`m2-reviewer`. When dispatching `m2-explorer`, pass `model` from the `AGENTS.md`
 directive `Explorer model: {tier}` if the project sets one; otherwise the agent's own default tier
 (`haiku`) applies. This keeps the read-only comprehension pass cheap without affecting the
-per-dimension `reviewer` judging, which is never downgraded.
+per-dimension `m2-reviewer` judging, which is never downgraded.
 
 ## Model Guidance
 
@@ -76,7 +76,7 @@ In Claude Code, pass the `model` parameter on the `Agent` tool call to control p
 
 - Pass `model: "opus"` for security and architecture subtasks (final synthesis, auth/ACL review, DI analysis).
 - Pass `model: "haiku"` for bounded evidence collection, file inventories, and mechanical checklist passes.
-- The read-only `explorer` inventory pass defaults to `haiku` (set in its agent
+- The read-only `m2-explorer` inventory pass defaults to `haiku` (set in its agent
   frontmatter); override per project with the `AGENTS.md` directive `Explorer model: {tier}`.
 - Do not ask subagents to edit files unless the user requested fixes and each subagent has a disjoint write scope.
 - Do not duplicate the same review scope across multiple subagents unless independent confirmation is explicitly needed.

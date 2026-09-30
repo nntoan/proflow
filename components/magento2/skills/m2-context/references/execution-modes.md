@@ -9,7 +9,7 @@ work runs — the same references, checklists, and findings schema apply either 
 
 | Mode | What happens | When it wins |
 |------|--------------|--------------|
-| `agents` | Read-only subagents are dispatched in parallel — `reviewer` (one per findings dimension), `explorer` (comprehension / RCA path-tracing) — and the skill owns synthesis: dedup, severity normalization, conflict tie-breaking. | Large modules, multi-dimension audits, security-sensitive targets. Faster wall-clock; main context stays small. |
+| `agents` | Read-only subagents are dispatched in parallel — `m2-reviewer` (one per findings dimension), `m2-explorer` (comprehension / RCA path-tracing) — and the skill owns synthesis: dedup, severity normalization, conflict tie-breaking. | Large modules, multi-dimension audits, security-sensitive targets. Faster wall-clock; main context stays small. |
 | `inline` | The skill executes the same analysis itself, sequentially, in the main conversation. | Small targets, step-by-step steering, token-frugal runs, environments where subagents are unavailable. |
 
 ## Selection, in precedence order
@@ -48,7 +48,7 @@ so there too rather than silently falling through to the default.
 - **Same canon.** Both modes read the same reference packs and emit the same
   findings-schema JSON/SARIF via the shared emitters. Scripted scanners
   (`build-findings.sh`) are deterministic and run as scripts in both modes.
-- **Read-only agents.** `reviewer` and `explorer` never modify code; only the main
+- **Read-only agents.** `m2-reviewer` and `m2-explorer` never modify code; only the main
   conversation writes.
 
 ## Documented divergence

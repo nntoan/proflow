@@ -95,9 +95,9 @@ the full implementation from analysis through tested, reviewed, reported deliver
   harness cannot pin a Skill-tool sub-skill invocation to a specific model, so every sequential
   task runs on the session model regardless of its tier. The field guides manual `/model`
   switching and future per-skill model pinning if the harness gains it. The **one** place a
-  tier takes live effect is the read-only `explorer` subagent, whose default tier is
+  tier takes live effect is the read-only `m2-explorer` subagent, whose default tier is
   `haiku` — overridable per project via the `AGENTS.md` directive `Explorer model: {tier}`
-  (`haiku`/`sonnet`/`opus`). `reviewer` is never downgraded.
+  (`haiku`/`sonnet`/`opus`). `m2-reviewer` is never downgraded.
 - **Delegate by probing, never by assumption.** The sub-skills of this pack ship in the **same
   plugin** as this skill — if this skill is running, the plugin is installed and they are
   Skill-invocable. Decide a sub-skill's availability by *attempting* its `Skill` invocation and
@@ -477,10 +477,10 @@ db_schema) is exempt. Follow `references/tdd-mode.md` and the loop in
 ### Existing module tasks (X*)
 
 1. Identify the exact files to add or modify.
-   Before editing unfamiliar code you may dispatch `explorer` to map its execution
+   Before editing unfamiliar code you may dispatch `m2-explorer` to map its execution
    paths and extension points first (per `references/task-breakdown-guide.md` type table). When
    you do, honor the `AGENTS.md` directive `Explorer model: {tier}` if set; otherwise the
-   explorer's `haiku` frontmatter default applies.
+   m2-explorer's `haiku` frontmatter default applies.
 2. Apply changes following all rules in `AGENTS.md` and `module-create/references/`.
    **TDD mode (on):** if the change adds behaviour (not pure config/scaffold), write the failing
    test first and watch it fail for the right reason before applying the production change, per

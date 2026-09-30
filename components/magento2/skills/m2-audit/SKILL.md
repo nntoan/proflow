@@ -6,7 +6,7 @@ description: >-
   Magento 2 module or codebase — one command that runs every read-only findings dimension and
   returns a SINGLE consolidated, de-duplicated, severity-ranked report plus one merged SARIF for CI
   / GitHub Code Scanning. Fans the dimensions out in parallel: architecture/quality/security review
-  via the `reviewer` agent per dimension, plus the specialist audits
+  via the `m2-reviewer` agent per dimension, plus the specialist audits
   `m2-security`, `m2-perf-audit`, `m2-lint`,
   `m2-a11y-audit`, `m2-marketplace`, and `m2-breeze-compat`
   where the module's surface warrants — then consolidates. Read-only; never modifies code. For a
@@ -78,7 +78,7 @@ slower, but every intermediate step is visible and steerable.
 Dispatch the selected dimensions concurrently. Two mechanisms (see
 `references/dimensions.md` for the per-dimension table, model tier, and command):
 
-- **Judgement dimensions** → dispatch `reviewer` subagents, one per review dimension
+- **Judgement dimensions** → dispatch `m2-reviewer` subagents, one per review dimension
   (Architecture/API · Security · Frontend/admin · Testing/tooling · Performance/operations), per
   `m2-review`'s `references/parallel-review.md`. Read-only agents; tier per
   `references/parallel-dispatch.md`.

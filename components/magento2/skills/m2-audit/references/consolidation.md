@@ -14,7 +14,7 @@ Two findings are the same issue when all of these match:
 
 On a collision the merged finding keeps the **highest severity** of the duplicates and records every
 dimension that raised it in a `dimensions` array (e.g. an ACL gap found by both the scripted
-security scan and the reviewer's Security dimension appears once, tagged with both). This is why the
+security scan and the m2-reviewer's Security dimension appears once, tagged with both). This is why the
 same defect surfacing in two dimensions never double-counts.
 
 ## Severity

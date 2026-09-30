@@ -27,7 +27,7 @@ base = sys.argv[1].rstrip('/')
 # hot path vs one-shot, data scale) using references/severity-perf.md. This note rides
 # on every finding's description so it is never lost downstream.
 CALIBRATION_NOTE = (
-    'Regex candidate — confidence is "candidate", not confirmed. The reviewer MUST '
+    'Regex candidate — confidence is "candidate", not confirmed. The m2-reviewer MUST '
     'calibrate severity to context (storefront vs admin, hot path vs one-shot, data '
     'scale) per references/severity-perf.md rather than trusting this default.'
 )

@@ -11,7 +11,7 @@ consolidation is byte-for-byte identical either way, only slower.
 
 ## What runs as an agent vs a script
 
-- **`reviewer` subagents** — one per review dimension (Architecture/API, Security,
+- **`m2-reviewer` subagents** — one per review dimension (Architecture/API, Security,
   Frontend/admin, Testing/tooling, Performance/operations). Each gets a self-contained brief (module
   path + dimension scope) per `review/references/parallel-review.md`, and returns a
   findings-schema JSON document. Launch them in a single batch so they run concurrently.
@@ -28,7 +28,7 @@ model — **subagent dispatch can pin a tier**. Apply the tiers from `dimensions
 - **session / opus** — Security and Performance/operations review, and the Phase 3 consolidation
   judgement: these weigh cross-cutting evidence and must not be downgraded.
 
-`reviewer` is never downgraded below the session model for the Security dimension. Tiers are
+`m2-reviewer` is never downgraded below the session model for the Security dimension. Tiers are
 advisory: if the harness cannot pin a subagent's model, dispatch on the session model and note it.
 
 ## Failure isolation

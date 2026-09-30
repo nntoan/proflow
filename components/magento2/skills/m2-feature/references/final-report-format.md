@@ -2,7 +2,7 @@
 
 Use this file during Phase 7 to produce the implementation report. The report is a Markdown
 document saved alongside the feature blueprint. It documents what was built, any deviations from
-the approved plan, and the information a developer or reviewer needs to understand and maintain
+the approved plan, and the information a developer or m2-reviewer needs to understand and maintain
 the feature.
 
 ---

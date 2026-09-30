@@ -12,7 +12,7 @@ Tasks use a two-part ID: `{TypePrefix}{Number}`
 | Prefix | Type                                                                                   |
 |--------|---------------------------------------------------------------------------------------|
 | `M`    | Create new module (maps 1:1 to a `m2-module-create` invocation)                 |
-| `X`    | Modify existing module (before an `X` task, the orchestrator may dispatch `explorer` to map the target module's execution paths and extension points first) |
+| `X`    | Modify existing module (before an `X` task, the orchestrator may dispatch `m2-explorer` to map the target module's execution paths and extension points first) |
 | `E`    | EAV attribute (maps 1:1 to a `m2-eav-attribute` invocation)                     |
 | `G`    | GraphQL surface design (maps 1:1 to a `m2-graphql` invocation)           |
 | `F`    | Frontend asset (maps 1:1 to a `m2-frontend` invocation, when present)    |
@@ -87,7 +87,7 @@ Each task record carries a `Model tier (advisory)` field — the model tier the 
 run on. It is **advisory only**: the harness cannot pin a Skill-tool sub-skill invocation to a
 specific model today, so these tasks run on the session model regardless (see SKILL.md
 §"Model tiering (advisory)"). The field guides manual `/model` switching and future per-skill
-pinning. The one place a tier takes live effect is the read-only `explorer` subagent
+pinning. The one place a tier takes live effect is the read-only `m2-explorer` subagent
 (its `haiku` frontmatter default + the `Explorer model` directive).
 
 Default tier by task type:

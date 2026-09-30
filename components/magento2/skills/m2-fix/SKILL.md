@@ -138,7 +138,7 @@ Goal: locate the exact code line(s) responsible.
    In `agents` mode (`--agents` flag, or `execution_mode` in `.commandcode/m2.json`
    surfaced as `{ctx.execution_mode}` — selection contract in
    `context/references/execution-modes.md`), delegate this
-   path-tracing to the read-only `explorer` agent and work from its comprehension map;
+   path-tracing to the read-only `m2-explorer` agent and work from its comprehension map;
    default is **inline**. The RCA approval gate below always runs in the main
    conversation, in either mode.
 2. For each frame: is the call legitimate? Does it return the expected value?

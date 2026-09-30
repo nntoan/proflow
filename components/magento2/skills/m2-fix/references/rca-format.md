@@ -84,10 +84,10 @@ proceed.}
 
 ## Explorer Assist
 
-During RCA investigation, the `explorer` agent can be dispatched to map the suspect
+During RCA investigation, the `m2-explorer` agent can be dispatched to map the suspect
 execution path — tracing the call chain from entry point through plugins, observers, and
 preferences — so the defect location can be pinpointed without manually reading every interceptor.
-When dispatched, `explorer` honors the `AGENTS.md` directive `Explorer model: {tier}`
+When dispatched, `m2-explorer` honors the `AGENTS.md` directive `Explorer model: {tier}`
 if set; otherwise its `haiku` frontmatter default applies.
 
 ## Quality Bar
