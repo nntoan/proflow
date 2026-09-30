@@ -9,7 +9,7 @@ then wires the full development lifecycle into seven slash commands:
 
 ```
 DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP
-/idea   /spec   /to-plan  /build  /test   /to-review  /ship
+/brainstorm   /spec   /to-plan  /build  /test   /to-review  /ship
 ```
 
 `/plan` and `/review` are reserved by Command Code, so the planning and review commands are
@@ -79,12 +79,27 @@ npx @nntoan/proflow install --mcp codegraph
 `uninstall` removes only the servers proflow added; other servers in the file are left alone. If the
 server's binary is not on `PATH`, the installer warns.
 
-**Why CodeGraph can look "enabled but unused".** Being enabled is not the same as being *indexed*.
-Your `AGENTS.md` tells the model to skip CodeGraph entirely unless a `.codegraph/` directory exists
-at the repo root, and `cmd mcp list` showing the server enabled does not create one. Build the index
-with `codegraph init` (it creates `.codegraph/`), then the model will reach for
-`codegraph_explore` before grep. `/idea` and `/spec`'s recon step explicitly prefer CodeGraph when
-it is available.
+**Why CodeGraph can look "enabled but unused".** Being enabled is not the same as being *indexed*
+(a `.codegraph/` directory); and Command Code **hides MCP tools in plan mode and skips hooks there**,
+so scouting cannot reach CodeGraph by the MCP route. `--mcp codegraph` therefore mirrors the Claude
+Code wiring (below): it also writes `permissions.allow` and two hooks, and `/brainstorm` + `/spec`
+recon fall back to `codegraph explore` over the shell — the route that works in plan mode. Build the
+index first with `codegraph init` (it creates `.codegraph/`).
+
+### CodeGraph wiring
+
+`--mcp codegraph` installs more than the server — it mirrors the Claude Code + GitNexus setup:
+
+| Writes | What |
+| --- | --- |
+| `.mcp.json` / `~/.commandcode/mcp.json` | the `codegraph serve --mcp` server |
+| `settings.json` → `permissions.allow` | `mcp__codegraph__*` and `Shell(codegraph *)` |
+| `settings.json` → `hooks.PreToolUse` | `hooks/codegraph-hook.cjs` — augments `grep`/`glob`/`shell` searches with `codegraph explore` context |
+| `settings.json` → `hooks.PostToolUse` | the same hook — an index-freshness nudge after `git commit`/`merge`/`rebase`/`cherry-pick`/`pull` |
+
+`uninstall` reverses all of it (only what proflow added). Because hooks are skipped and MCP is hidden
+in plan mode, plan-mode scouting depends on the `Shell(codegraph *)` allow rule plus the recon step's
+`codegraph explore` call.
 
 ## Components
 
@@ -104,16 +119,18 @@ End-to-end Magento 2 engineering, adapted from
 | --- | --- |
 | 36 skills | prefixed `m2-` (`m2-fix`, `m2-context`, `m2-audit`, `m2-review`, `m2-scaffold`, …) so the generic upstream names (`context`, `review`, `test`, …) can't shadow other skills, proflow's commands, or built-ins |
 | 18 commands | `m2-*` forwarders (`/m2-audit`, `/m2-bugfix`, `/m2-review`, `/m2-deploy`, …) |
-| 2 agents | `reviewer` and `explorer` (read-only), with tool ids mapped to Command Code |
+| 2 agents | `m2-reviewer` and `m2-explorer` (read-only), with tool ids mapped to Command Code |
 | 1 hook | a `PreToolUse` guard that keeps `.docs/` artifacts at the project root |
 
-magento2-tools is a Claude Code plugin, so `scripts/sync-magento2.mjs` adapts it while vendoring:
-skill namespacing (`m2-`), `${CLAUDE_PLUGIN_ROOT}/skills/X` → `${COMMANDCODE_SKILL_DIR}/../m2-X`,
-`.claude/m2.json` → `.commandcode/m2.json`, `CLAUDE.md` → `AGENTS.md`, agent tool ids
-(`Glob`→`glob`, `Read`→`read_file`, `Bash`→`shell_command`), and the guard hook's tool ids +
-`COMMANDCODE_PROJECT_DIR`. The agents keep their upstream names, so a user-defined agent named
-`reviewer` or `explorer` would take precedence. The `M2_*` env overrides (e.g. `M2_PHP_CONTAINER`)
-work unchanged.
+magento2-tools is a Claude Code plugin, so `scripts/sync-magento2.mjs` adapts it while vendoring
+(rules in `scripts/patches/magento2.mjs`, applied by the shared engine): skill namespacing (`m2-`),
+`${CLAUDE_PLUGIN_ROOT}/skills/X` → `${COMMANDCODE_SKILL_DIR}/../m2-X`, `.claude/m2.json` →
+`.commandcode/m2.json`, `CLAUDE.md` → `AGENTS.md`, agent tool ids (`Glob`→`glob`, `Read`→`read_file`,
+`Bash`→`shell_command`), agent rename (`reviewer`/`explorer` → `m2-reviewer`/`m2-explorer`, including
+the ~51 prose references), and the guard hook's tool ids + `COMMANDCODE_PROJECT_DIR`. Unreferenced
+upstream dev tooling (`gen-routing.sh`) is **excluded**. The `M2_*` env overrides (e.g.
+`M2_PHP_CONTAINER`) work unchanged. The full rationale and alternatives are in
+[the ADR](docs/adr/0001-magento2-integration.md).
 
 Refresh the vendored copy:
 
@@ -128,7 +145,7 @@ Provenance is recorded in `components/magento2/VENDOR.json`.
 
 | Command | Use it for | What it does |
 | --- | --- | --- |
-| `/idea <idea>` | Sharpening a fuzzy idea | Loads `idea-refine`; fans out research/scouting subagents, diverges then converges, and writes a one-page `docs/spec/<id>/IDEA.md`. Hands off to `/spec`. |
+| `/brainstorm <idea>` | Sharpening a fuzzy idea | Loads `idea-refine`; fans out research/scouting subagents, diverges then converges, and writes a one-page `docs/spec/<id>/IDEA.md`. Hands off to `/spec`. |
 | `/spec <goal\|ticket\|version>` | Defining work | Recons with parallel subagents **before** interviewing, drafts `docs/spec/<id>/SPEC.md`, then runs a reflection loop with the `spec-reviewer` persona and an approval gate. |
 | `/to-plan <goal>` | Planning approved work | Loads `planning-and-task-breakdown`, reads `docs/spec/<id>/`, enters plan mode, and writes `tasks/plan.md` + `tasks/todo.md`. |
 | `/build [auto]` | One slice, or the whole plan | Loads `incremental-implementation` + `test-driven-development`; runs RED → GREEN → regression → build → commit for the next task, or every task with `auto`. |
@@ -150,15 +167,18 @@ the canonical spec. `/spec` writes three siblings:
 
 The flow is **recon → interview → draft → reflect → approve**:
 
-1. **Recon** — parallel subagents scout the codebase (`explore`; CodeGraph first when available) and
-   research prior art/external approaches (`general`) *before* the first question, so the interview
-   starts from evidence. Findings land in `explore-brief.md`.
+1. **Recon** — parallel subagents scout the codebase (`explore`) and research prior art/external
+   approaches (`general`) *before* the first question, so the interview starts from evidence. When the
+   repo has a `.codegraph/` index the scout runs `codegraph explore "<query>"` over the shell first
+   (the CodeGraph MCP tool is hidden in plan mode, so the CLI is the route that works while planning).
+   Findings land in `explore-brief.md`.
 2. **Interview** — one question at a time (the `interview-me` skill); each answer is appended to
    `explore-brief.md`.
 3. **Draft** — `docs/spec/<id>/SPEC.md`.
-4. **Reflect** — the `spec-reviewer` persona reviews the draft and returns severity-ranked findings;
-   each 🔴 Blocking / 🟡 Should-fix item is put to you through the question tool (fix / accept /
-   defer), fixes are applied, the round is logged, and the review repeats (cap 5 rounds).
+4. **Reflect** — you are asked **first** (question tool) whether to bring the `spec-reviewer` in; if
+   yes, it reviews the draft and returns severity-ranked findings, each 🔴 Blocking / 🟡 Should-fix
+   item is put to you (fix / accept / defer), fixes are applied, the round is logged, and the review
+   repeats (cap 5 rounds).
 5. **Approve** — a final question-tool gate: approve, refine, or reject. Only then is the spec done.
 
 `/to-plan` and `/build` read `docs/spec/<id>/` (spec + brief + log) rather than a root `SPEC.md`.
@@ -229,14 +249,18 @@ Set options at launch with `--mod-option name=value`:
 | Path | Contents |
 | --- | --- |
 | `mods/proflow.ts` | The mod: commands, the `agent_skills` tool, the catalog hook, flags, the argument engine. Reads everything else relative to itself, so the package is self-contained. |
-| `commands/*.md` | The seven lifecycle workflows (authored for Command Code). The mod reads these at load; they are not overwritten by the sync script. |
-| `agents/spec-reviewer.md` | The spec reflection persona (authored here), installed as a native subagent. |
-| `skills/`, `references/`, `agents/` (rest), `docs/agents.md` | Vendored verbatim from addyosmani/agent-skills. |
+| `commands/*.md` | The seven lifecycle workflows (authored for Command Code). The mod reads these at load. |
+| `overlays/` | Authored files restored *after* each sync (`agents/spec-reviewer.md`). The sync wipes `skills/` · `references/` · `agents/`, so proflow-owned content lives here, not under them. |
+| `skills/`, `references/`, `agents/` (rest), `docs/agents.md` | Vendored from addyosmani/agent-skills; `spec-driven-development` is patched via `scripts/patches/agent-skills.mjs`. |
+| `hooks/codegraph-hook.cjs` | The CodeGraph PreToolUse augment + PostToolUse freshness hook (adapted from the Claude Code GitNexus hook). |
+| `scripts/lib/vendor.mjs` | The shared vendoring/patch engine both sync scripts use — one declarative path. |
+| `scripts/patches/agent-skills.mjs`, `scripts/patches/magento2.mjs` | Declarative patch/transform data. The engine fails loudly on drift. |
 | `scripts/install.mjs` | The installer (`npx @nntoan/proflow install|uninstall|status`) — the `proflow` bin. |
-| `scripts/sync-upstream.mjs` | Re-vendors the upstream content (`npm run sync [ref]`). |
+| `scripts/sync-upstream.mjs` | Re-vendors agent-skills (`npm run sync [ref]`). |
 | `scripts/sync-magento2.mjs` | Vendors + adapts the magento2-tools component (`npm run sync:magento2 [ref]`). |
 | `components/magento2/` | The vendored magento2 component (skills, commands, agents, hooks). |
-| `test/smoke.mjs`, `test/install.mjs` | Mod-surface and installer tests (`npm test`). |
+| `docs/adr/`, `docs/verification.md` | The Magento integration ADR and the behavioural verification guide. |
+| `test/smoke.mjs`, `test/vendor.mjs`, `test/install.mjs` | Mod-surface, vendoring, and installer tests (`npm test`). |
 
 Refresh the vendored content:
 
@@ -250,7 +274,7 @@ Provenance for the vendored snapshot is recorded in `VENDOR.json`.
 ## Verify
 
 ```bash
-npm test                # mod surface (19) + installer (7) checks
+npm test                # mod surface (19) + vendor (6) + installer (9) checks
 cmd mods list           # proflow listed, no load warnings
 cmd skills list         # 25 project skills after an install
 ```
