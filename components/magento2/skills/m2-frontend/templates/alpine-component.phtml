@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+/** @var Magento\Framework\View\Element\Template $block */
+/** @var Magento\Framework\Escaper $escaper */
+?>
+<div class="{vendor_lower}-{module_lower}__component"
+        x-data='{
+        label: "<?= $escaper->escapeJs($block->getData("label") ?: "") ?>",
+        setLabel(text) { this.label = text; }
+     }'
+        x-cloak>
+    <h2 class="text-2xl font-semibold" x-text="label"></h2>
+    <button class="bg-primary hover:bg-primary-darker text-white px-4 py-2 rounded"
+            @click="setLabel('Updated')">
+        <?= $escaper->escapeHtml(__('Update')) ?>
+    </button>
+</div>

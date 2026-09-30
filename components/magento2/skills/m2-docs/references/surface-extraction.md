@@ -1,0 +1,607 @@
+# Surface Extraction Reference
+
+Read-only grep/parse recipes for `scripts/extract-surface.sh`. Each surface lists the
+source file(s) to check, the extraction command, and the required output fields. Every
+entry must record its **source file path** so the generated documentation can cite it.
+
+If a source file does not exist for a given surface, that surface is silently skipped
+and must be omitted from the documentation (no empty tables, no placeholder rows).
+
+---
+
+## 1. Public API Surface (`@api`)
+
+**Source files:** All `*.php` under the module directory.
+
+**Recipe:**
+
+```
+grep -rn '@api' <module_path> --include='*.php'
+```
+
+**Output fields per entry:**
+- `class` — short class or interface name (unqualified name from the declaration line)
+- `kind` — `interface` or `class`
+- `file` — relative path from module root
+- `line` — line number of the `@api` annotation
+
+Only classes and interfaces with `@api` in their docblock are public contract. Exclude
+`@api` occurrences in inline comments that are not part of a class/interface declaration.
+
+---
+
+## 2. Events Observed (`etc/events.xml`)
+
+**Source files:** `etc/events.xml`, `etc/frontend/events.xml`, `etc/adminhtml/events.xml`,
+`etc/webapi_rest/events.xml`, `etc/crontab/events.xml`.
+
+**Recipe:** Parse XML, extract `<observer>` elements:
+
+```
+grep -n 'name=\|instance=' etc/events.xml
+```
+
+Or via xmllint/xmlstarlet if available:
+
+```
+xmllint --xpath '//observer/@name | //observer/@instance | //event/@name' etc/events.xml
+```
+
+**Output fields per entry:**
+- `event_name` — value of `<event name="...">` attribute
+- `observer_name` — value of `<observer name="...">` attribute
+- `observer_class` — value of `<observer instance="...">` attribute
+- `area` — area derived from the file path (global/frontend/adminhtml/etc.)
+- `file` — path to events.xml relative to module root
+
+---
+
+## 3. Events Fired (`dispatch(` calls)
+
+**Source files:** All `*.php` under the module directory.
+
+**Recipe:**
+
+```
+grep -rn 'dispatch(' <module_path> --include='*.php'
+```
+
+Look for `$this->eventManager->dispatch(`, `$eventManager->dispatch(`, or
+`$this->_eventManager->dispatch(`. Extract the first string argument (event name).
+
+**Output fields per entry:**
+- `event_name` — first string literal argument to `dispatch()`
+- `file` — path to the PHP file, relative to module root
+- `line` — line number
+
+Note: Dynamic event names (computed strings, variables) cannot be extracted statically;
+skip them and note the count of dynamic dispatches separately.
+
+---
+
+## 4. Plugins (`etc/di.xml`)
+
+**Source files:** `etc/di.xml`, `etc/frontend/di.xml`, `etc/adminhtml/di.xml`,
+`etc/webapi_rest/di.xml`, `etc/graphql/di.xml`.
+
+**Recipe:** Extract `<plugin>` elements:
+
+```
+grep -n '<plugin ' etc/di.xml
+```
+
+**Output fields per entry:**
+- `plugin_name` — value of `name` attribute on `<plugin>`
+- `plugin_class` — value of `type` attribute on `<plugin>`
+- `target_type` — value of `name` attribute on the parent `<type>` element
+- `sort_order` — value of `sortOrder` attribute (if present)
+- `disabled` — true if `disabled="true"` is set
+- `area` — area derived from the file path
+- `file` — path to di.xml relative to module root
+
+---
+
+## 5. Preferences (`etc/di.xml`)
+
+**Source files:** `etc/di.xml`, `etc/frontend/di.xml`, `etc/adminhtml/di.xml`,
+`etc/webapi_rest/di.xml`.
+
+**Recipe:** Extract `<preference>` elements:
+
+```
+grep -n '<preference ' etc/di.xml
+```
+
+**Output fields per entry:**
+- `for` — value of `for` attribute (interface/class being replaced)
+- `type` — value of `type` attribute (concrete class)
+- `area` — area derived from the file path
+- `file` — path to di.xml relative to module root
+
+---
+
+## 6. CLI Commands (`etc/di.xml` + `Console/`)
+
+**Source files:** `etc/di.xml`, all `*.php` under `Console/Command/`.
+
+**Recipe (DI registration):** Look for `CommandList` or `Magento\Framework\Console\CommandListInterface` entries:
+
+```
+grep -n 'CommandList\|CommandListInterface' etc/di.xml
+```
+
+**Recipe (command class):** In each `Console/Command/*.php`, extract the `setName()` call
+value:
+
+```
+grep -rn 'setName(' Console/Command/ --include='*.php'
+```
+
+**Output fields per entry:**
+- `command_name` — CLI name from `setName()` (e.g. `acme:orders:sync`)
+- `class` — PHP class name
+- `file` — path to the Command PHP file, relative to module root
+- `description` — value from `setDescription()` call, if found
+
+---
+
+## 7. Admin Config Paths (`etc/adminhtml/system.xml`)
+
+**Source files:** `etc/adminhtml/system.xml`.
+
+**Recipe:**
+
+```
+grep -n '<section\|<group\|<field' etc/adminhtml/system.xml
+```
+
+Or parse via xmllint to extract the full config path hierarchy.
+
+**Output fields per entry:**
+- `config_path` — full path: `{section_id}/{group_id}/{field_id}`
+- `label` — human-readable label from `<label>` child element
+- `type` — field type (text, select, multiselect, obscure, etc.)
+- `file` — `etc/adminhtml/system.xml` relative to module root
+
+---
+
+## 8. Cron Jobs (`etc/crontab.xml`)
+
+**Source files:** `etc/crontab.xml`.
+
+**Recipe:**
+
+```
+grep -n '<job\|<schedule\|<config_path' etc/crontab.xml
+```
+
+**Output fields per entry:**
+- `job_name` — value of `name` attribute on `<job>`
+- `instance` — value of `instance` attribute on `<job>`
+- `method` — value of `method` attribute on `<job>`
+- `schedule` — cron expression from `<schedule>`, or config path from `<config_path>`
+- `group` — cron group id from the parent `<group>` element
+- `file` — `etc/crontab.xml` relative to module root
+
+---
+
+## 9. REST Routes (`etc/webapi.xml`)
+
+**Source files:** `etc/webapi.xml`.
+
+**Recipe:**
+
+```
+grep -n '<route ' etc/webapi.xml
+```
+
+**Output fields per entry:**
+- `method` — HTTP verb: GET, POST, PUT, DELETE
+- `url` — URL template as written (e.g. `/V1/acme/orders/:id`)
+- `url_template` — the same URL with Magento's `:param` rewritten to OpenAPI/Postman
+  `{param}` (e.g. `/V1/acme/orders/{id}`)
+- `path_params` — ordered list of `{ "name": "id", "type": "integer" }` parsed from
+  `:(\w+)` in `url`. `type` is the OpenAPI primitive, resolved from the service-method
+  signature in surface 14; `string` when the signature cannot be read
+- `service_class` — value of `class` attribute under `<service>`
+- `service_method` — value of `method` attribute under `<service>`
+- `auth` — auth scopes from `<resources>`, comma-joined (display string, unchanged)
+- `auth_kind` — the classification OpenAPI security selection needs:
+  `anonymous` when any scope is `anonymous`; `acl` when any scope is a real ACL
+  resource; `self` when the only scope is `self`. A route with no `<resources>` is
+  treated as `acl`
+- `acl_resources` — the scopes that are neither `anonymous` nor `self`, e.g.
+  `["Acme_Sample::view"]`; empty otherwise
+- `is_search_criteria` — `true` when a parameter resolves to `*\Api\SearchCriteriaInterface`
+  (set in surface 14). Detected by **resolved FQCN, not by method name** — `getList` is a
+  convention, not a guarantee. See `references/search-criteria-params.md`
+- `file` — `etc/webapi.xml` relative to module root
+
+---
+
+## 10. GraphQL (`etc/schema.graphqls`)
+
+**Source files:** `etc/schema.graphqls`.
+
+**Recipe:**
+
+```
+grep -n 'type\|input\|interface\|extend type\|extend input' etc/schema.graphqls
+```
+
+**Output fields per entry:**
+- `kind` — `type`, `input`, `interface`, `extend type`, `extend input`
+- `name` — GraphQL type name
+- `fields` — list of field names with their types (one line each)
+- `file` — `etc/schema.graphqls` relative to module root
+
+---
+
+## 11. DB Schema (`etc/db_schema.xml`)
+
+**Source files:** `etc/db_schema.xml`.
+
+**Recipe:**
+
+```
+grep -n '<table\|<column\|<index\|<constraint' etc/db_schema.xml
+```
+
+**Output fields per entry:**
+- `table_name` — value of `name` attribute on `<table>`
+- `engine` — value of `engine` attribute (default: innodb)
+- `columns` — list of column names + types from `<column>` elements
+- `indexes` — list of index names + types
+- `constraints` — primary/foreign/unique constraints
+- `file` — `etc/db_schema.xml` relative to module root
+
+---
+
+## 12. Extension Attributes (`etc/extension_attributes.xml`)
+
+**Source files:** `etc/extension_attributes.xml`.
+
+**Recipe:**
+
+```
+grep -n '<extension_attributes\|<attribute' etc/extension_attributes.xml
+```
+
+**Output fields per entry:**
+- `for` — value of `for` attribute on `<extension_attributes>`
+- `attribute_code` — value of `code` attribute on `<attribute>`
+- `type` — value of `type` attribute
+- `file` — `etc/extension_attributes.xml` relative to module root
+
+---
+
+## 13. `@api` Method Signatures
+
+**Source files:** All `*.php` under the module directory that bear an `@api` annotation on
+the class or interface docblock (i.e. already captured in surface `api`).
+
+**Recipe:** For each class/interface collected in surface 1, parse its public method
+declarations:
+
+```
+grep -n 'public function' <api_file>
+```
+
+For each public method, extract:
+- The method name.
+- Its parameter list (name + type hint).
+- Its return type hint (PHP 7+ `function foo(): ReturnType` syntax only).
+
+Only `public function` declarations found in the file itself are collected; the extractor
+does not resolve methods inherited from parent interfaces in other files.
+
+**Output fields per entry:**
+- `class` — short (unqualified) class/interface name — consistent with the `api` surface
+- `method` — method name
+- `params` — ordered list of `{ "name": "foo", "type": "string" }` objects (parameter name without leading `$`)
+- `return_type` — return type as a string (`"void"`, `"int"`, FQCN, etc.)
+- `file` — relative path from module root
+- `line` — line number of the `public function` declaration
+
+---
+
+## 14. REST Example Shapes (Service-method + DTO Walk)
+
+**Source files:** `etc/webapi.xml`, PHP source of the service class named by each route.
+
+**Recipe:** For each REST route captured in surface 9, resolve the service method and
+build illustrative request/response shapes:
+
+1. **Locate the service class** — use the `service_class` FQCN from surface 9.
+   Find its PHP source file under the module tree.
+
+2. **Build a use-map** — parse the file's `use` statements and `namespace` declaration
+   to map short type names to FQCNs. Resolution is **module-local**: if a type's resolved
+   FQCN does not fall under this module's `Vendor/Module` namespace prefix, it cannot be
+   walked and degrades to `"string"`.
+
+3. **Resolve method parameters and return type** — find the `public function <method>()`
+   declaration in the service class. For each parameter, use the use-map to resolve the
+   type hint. For the return type, resolve similarly.
+
+4. **Walk DTO types** — a type is a DTO if its FQCN matches `*\Api\Data\*Interface`.
+   Parse the DTO interface file and collect its public getter methods
+   (`get*()`, `is*()`). Map each getter to a snake_case field name and derive a
+   placeholder value from the return type (see the Example-derivation table in
+   `doc-structure.md`). Walking is bounded by a **depth cap of ≈4 levels** and a
+   **visited-set** to break cycles; a type seen at a prior level is replaced by `{}`.
+
+5. **Build `request_shape`** — built from the **first DTO-typed parameter** only. Parse
+   that DTO's public getter methods and produce a flat field→example object (one key per
+   getter, snake_case, with a placeholder value derived from the getter's return type). A
+   method whose parameters are all scalar types (int, string, bool, etc.) — i.e. no
+   DTO-typed param exists — yields `request_shape: null`. Unresolvable service classes
+   also produce `request_shape: null`.
+
+6. **Build `response_shape`** — derived from the return type placeholder. `void` →
+   `null`.
+
+7. **Extract `throws`** — scan the `@throws` tags in the docblock that immediately
+   precedes the service method declaration (method-scoped, not file-wide). Resolve short
+   exception class names via the use-map to FQCNs.
+
+8. **Build `request_schema` / `response_schema`** — a parallel walk with `_type_to_schema()`,
+   mirroring `_type_to_example()`: same module-local resolution rule, same depth cap and
+   visited-set cycle guard, but emitting JSON Schema **types** instead of placeholder
+   **values**. Both are kept: `*_shape` feeds the Markdown examples, `*_schema` feeds
+   OpenAPI `components/schemas`. `{"file_id": 0}` is a valid example but tells a
+   generator nothing about `integer` vs `number`, nullability, or `format`.
+
+   | PHP type | Schema node |
+   |---|---|
+   | `string` | `{type: string}` |
+   | `int` | `{type: integer}` |
+   | `float` | `{type: number}` |
+   | `bool` | `{type: boolean}` |
+   | `?T`, `T\|null` | schema of `T` + `nullable: true` |
+   | `T[]` | `{type: array, items: <schema of T>}` |
+   | `array` / `mixed` | `{}` **and record a warning** (step 10) |
+   | DTO `*\Api\Data\*Interface` | `{type: object, title: <ShortName minus Interface>, properties: {…}}`, one property per `get*`/`is*` getter, snake_cased |
+   | non-module-local type | `{type: string}` — the same degradation the example walker applies |
+
+   `title` is what lets the emitter hoist the node into `components/schemas` and `$ref`
+   it; a node capped by depth or cycle guard is `{}` and carries none.
+
+9. **Prefer a docblock element type over a bare native `array`** — Magento types
+   collections as a native `array` hint plus `@return Foo[]` (the SearchResults idiom).
+   Both walkers read the docblock in that case, so `getItems(): array` with
+   `@return SampleInterface[]` yields `{type: array, items: {…Sample…}}` rather than
+   `{}`. `array<int, Foo>` and `array<Foo>` normalize to `Foo[]`.
+
+10. **Record bare `array` / `mixed`** — breadth-first over the module-local interface
+    graph reachable from every route's `service_class`, collecting each bare `array` or
+    `mixed` in a `@param`/`@return` annotation, and each bare native hint that **no**
+    docblock annotation types. `array<…>`, `array{…}`, `mixed[]` and `string[]` are typed
+    enough and are not hits. Emitted as the top-level `rest_warnings` surface, sorted by
+    `(file, line)`.
+
+**Output fields per entry** (extend each REST route entry with):
+- `request_shape` — JSON-serializable object or `null`
+- `response_shape` — JSON-serializable value or `null`
+- `request_schema` — JSON Schema node for the first DTO-typed parameter, or `null`
+- `response_schema` — JSON Schema node for the return type; `null` for `void`
+- `request_param` — the service-method parameter name that produced `request_shape`, or
+  `null`. `Magento\Framework\Webapi\ServiceInputProcessor` keys the REST request body by
+  parameter name (`{"sample": {…}}`), so an emitted body without it is rejected at runtime
+- `throws` — list of exception FQCNs extracted from the method's own `@throws` tags
+
+**Top-level output** (a sibling of `rest_routes`, not a per-route field):
+- `rest_warnings` — list of `{ kind, file, line, symbol, annotation, message }`, one per
+  bare `array`/`mixed` found in step 10. Empty when the graph is clean
+
+Shapes that cannot be resolved (unresolvable type, missing source file) degrade to
+`"string"` at the field level. The shape is still emitted; the caption **"Example —
+illustrative, generated from the schema."** must appear above every rendered example block.
+
+---
+
+## 15. GraphQL Operations + Field Types
+
+**Source files:** `etc/schema.graphqls`.
+
+**Recipe (operations):** Scan for `Query`, `Mutation`, and `extend type Query` /
+`extend type Mutation` blocks. For each field declared inside those blocks, emit one
+operation entry:
+
+```
+grep -n 'type Query\|type Mutation\|extend type Query\|extend type Mutation' etc/schema.graphqls
+```
+
+Then parse each field inside the block:
+- Field name.
+- Argument list: each `name: Type` pair.
+- Return type (strip GraphQL `!` non-null markers and `[]` list markers from the type
+  string for the `output_type` field).
+- Resolver class from the `@resolver(class="...")` directive.
+
+**Recipe (field types on non-operation types):** For every type/input/interface collected
+in surface 10, update its `fields` list from a flat list of field-name strings to a list
+of `{ "name": "...", "type": "..." }` objects. Strip `!` and `[]` markers from `type`.
+
+**Output fields per operation entry:**
+- `operation_kind` — `"query"` or `"mutation"`
+- `name` — operation field name (e.g. `acmeOrders`)
+- `args` — list of `{ "name": "...", "type": "..." }` argument descriptors
+- `output_type` — return type string (list/non-null markers stripped)
+- `resolver` — FQCN of the resolver class from `@resolver(class="...")`
+- `file` — `etc/schema.graphqls` relative to module root
+
+**Updated fields on existing graphql entries:**
+- `fields` — changed from a list of name strings to a list of `{ "name": "...", "type": "..." }` objects
+
+---
+
+## 16. User-Facing Surface
+
+**Source files:** `etc/adminhtml/system.xml`, `etc/adminhtml/routes.xml`, `view/adminhtml/`,
+`view/frontend/`, `etc/frontend/routes.xml`, `view/adminhtml/ui_component/`,
+`etc/adminhtml/menu.xml`, `etc/acl.xml`, `etc/email_templates.xml`.
+
+**Recipe:** This surface aggregates multiple sub-extractors. It is emitted only when at
+least one sub-key is non-empty. A module **presents a user surface** iff `user_surface`
+is non-empty.
+
+### 16a. Admin Config (`admin_config`)
+
+Parse `etc/adminhtml/system.xml` for section/group/field hierarchy. For each field,
+record:
+- `config_path` — `{section_id}/{group_id}/{field_id}` (the section and group *ids* live here)
+- `section_label` — human-readable label from `<label>` on the `<section>` element
+- `group_label` — human-readable label from `<label>` on the `<group>` element
+- `tab` — `<tab>` id referenced by the section (nav label context)
+- `field_label` — `<label>` text of the `<field>` element
+- `comment` — `<comment>` text if present
+- `file` — `etc/adminhtml/system.xml` relative to module root
+
+### 16b. Admin UI (`admin_ui`)
+
+- `components` — list of `{ "name": "<component-name>", "file": "<path>" }` objects for `*.xml` files under `view/adminhtml/ui_component/`
+- `menu` — list of menu entries from `etc/adminhtml/menu.xml`: `{ id, title, parent, action, resource, file }`
+- `acl` — list of ACL resource entries from `etc/acl.xml`: `{ id, title, file }`
+- `admin_routes` — list of `{ id, frontName, file }` from `etc/adminhtml/routes.xml`
+
+Note: Adminhtml controllers (`Controller/Adminhtml/`) are **excluded** from the
+`storefront` sub-key; they belong to `admin_ui` only.
+
+### 16c. Storefront (`storefront`)
+
+- `routes` — list of `{ id, frontName, file }` from `etc/frontend/routes.xml` (no `area` field)
+- `controllers` — list of `{ class, file }` objects for PHP files under `Controller/` (excluding `Controller/Adminhtml/`)
+- `layouts` — list of `{ handle, file }` objects for layout XMLs under `view/frontend/layout/`
+- `templates` — list of `{ file }` objects for `.phtml` files under `view/frontend/templates/`
+
+### 16d. Emails (`emails`)
+
+Parse `etc/email_templates.xml`:
+- `id` — template id
+- `label` — human-readable label
+- `file_attr` — template file name (the `file` attribute on the `<template>` element, e.g. `notify.html`)
+- `module` — module name attribute value
+- `file` — source XML path (`etc/email_templates.xml`) relative to module root
+
+---
+
+## Extraction Order
+
+The script processes surfaces in this order and skips any file that does not exist:
+
+1. `@api` annotations (PHP scan)
+2. Events observed (`etc/events.xml` + area variants)
+3. Events fired (`dispatch(` PHP scan)
+4. Plugins (`etc/di.xml` + area variants)
+5. Preferences (`etc/di.xml` + area variants)
+6. CLI commands (`etc/di.xml` + `Console/Command/*.php`)
+7. Admin config paths (`etc/adminhtml/system.xml`)
+8. Cron jobs (`etc/crontab.xml`)
+9. REST routes (`etc/webapi.xml`)
+10. GraphQL types (`etc/schema.graphqls`)
+11. DB schema (`etc/db_schema.xml`)
+12. Extension attributes (`etc/extension_attributes.xml`)
+13. `@api` method signatures (PHP scan of `@api` classes/interfaces)
+14. REST example shapes (service-method resolution + DTO walk)
+15. GraphQL operations + field types (`etc/schema.graphqls`)
+16. User-facing surface (admin config / admin UI / storefront / emails)
+
+## Output Format
+
+The script emits one JSON object:
+
+```json
+{
+  "module_path": "<absolute path>",
+  "surfaces": {
+    "api": [ { "class": "...", "kind": "...", "file": "...", "line": 12 } ],
+    "api_methods": [
+      {
+        "class": "SampleRepositoryInterface",
+        "method": "getById",
+        "params": [ { "name": "id", "type": "int" } ],
+        "return_type": "SampleInterface",
+        "file": "Api/SampleRepositoryInterface.php",
+        "line": 14
+      }
+    ],
+    "events_observed": [ ... ],
+    "events_fired": [ ... ],
+    "plugins": [ ... ],
+    "preferences": [ ... ],
+    "cli_commands": [ ... ],
+    "config_paths": [ ... ],
+    "cron_jobs": [ ... ],
+    "rest_routes": [
+      {
+        "method": "GET",
+        "url": "/V1/acme/sample/:id",
+        "service_class": "Acme\\Sample\\Api\\SampleRepositoryInterface",
+        "service_method": "getById",
+        "auth": "Acme_Sample::view",
+        "file": "etc/webapi.xml",
+        "request_shape": null,
+        "response_shape": { "entity_id": 0, "customer_email": "string", "active": true },
+        "throws": [ "Magento\\Framework\\Exception\\NoSuchEntityException" ]
+      }
+    ],
+    "graphql": [
+      {
+        "kind": "type",
+        "name": "AcmeOrder",
+        "fields": [
+          { "name": "id", "type": "Int" },
+          { "name": "status", "type": "String" }
+        ],
+        "file": "etc/schema.graphqls"
+      }
+    ],
+    "graphql_operations": [
+      {
+        "operation_kind": "query",
+        "name": "acmeOrder",
+        "args": [ { "name": "id", "type": "Int" } ],
+        "output_type": "AcmeOrder",
+        "resolver": "Vendor\\Module\\Model\\Resolver\\Order",
+        "file": "etc/schema.graphqls"
+      }
+    ],
+    "db_schema": [ ... ],
+    "extension_attributes": [ ... ],
+    "user_surface": {
+      "admin_config": [
+        {
+          "config_path": "acme_sample/general/enabled",
+          "section_label": "Sample",
+          "group_label": "General",
+          "tab": "acme",
+          "field_label": "Enabled",
+          "comment": "Turns the feature on.",
+          "file": "etc/adminhtml/system.xml"
+        }
+      ],
+      "admin_ui": {
+        "components": [ { "name": "acme_sample_listing", "file": "view/adminhtml/ui_component/acme_sample_listing.xml" } ],
+        "menu": [ { "id": "Acme_Sample::list", "title": "Samples", "parent": "Magento_Backend::content", "action": "acme_sample/index/index", "resource": "Acme_Sample::view", "file": "etc/adminhtml/menu.xml" } ],
+        "acl": [ { "id": "Acme_Sample::view", "title": "View Samples", "file": "etc/acl.xml" } ],
+        "admin_routes": [ { "id": "acme_sample", "frontName": "acme_sample", "file": "etc/adminhtml/routes.xml" } ]
+      },
+      "storefront": {
+        "routes": [ { "id": "acme_sample", "frontName": "acme_sample", "file": "etc/frontend/routes.xml" } ],
+        "controllers": [ { "class": "View", "file": "Controller/Index/View.php" } ],
+        "layouts": [ { "handle": "acme_sample_index_index", "file": "view/frontend/layout/acme_sample_index_index.xml" } ],
+        "templates": [ { "file": "view/frontend/templates/view.phtml" } ]
+      },
+      "emails": [
+        { "id": "acme_sample_notify", "label": "Sample Notification", "file_attr": "notify.html", "module": "Acme_Sample", "file": "etc/email_templates.xml" }
+      ]
+    }
+  }
+}
+```
+
+Empty arrays are included in the JSON for completeness but surfaces with zero entries
+must be **omitted** from the generated Markdown documentation. The `user_surface` key
+is always present and is `{}` when the module exposes no user-facing surface; its
+sub-keys (`admin_config`, `admin_ui`, `storefront`, `emails`) are omitted when empty.

@@ -17,6 +17,7 @@
 		"references/",
 		"agents/",
 		"docs/",
+		"components/",
 		"scripts/install.mjs",
 		"README.md",
 		"LICENSE",
@@ -26,6 +27,7 @@
 	"scripts": {
 		"test": "node --disable-warning=ExperimentalWarning test/smoke.mjs && node --disable-warning=ExperimentalWarning test/install.mjs",
 		"sync": "node scripts/sync-upstream.mjs",
+		"sync:magento2": "node scripts/sync-magento2.mjs",
 		"proflow:install": "node scripts/install.mjs install",
 		"proflow:uninstall": "node scripts/install.mjs uninstall"
 	},
