@@ -99,7 +99,7 @@ check('--component magento2 installs its skills, commands, agents, and hook', ()
 	assert.ok(skills.includes('m2-fix'), 'm2-fix skill missing');
 	assert.equal(skills.filter(name => name.startsWith('m2-')).length, 36);
 	assert.equal(readdirSync(join(cc, 'commands')).filter(n => n.startsWith('m2-')).length, 18);
-	assert.ok(existsSync(join(cc, 'agents', 'reviewer.md')));
+	assert.ok(existsSync(join(cc, 'agents', 'm2-reviewer.md')), 'm2-reviewer agent missing');
 	assert.ok(existsSync(join(cc, 'hooks', 'm2', 'guard-docs-path.sh')));
 
 	const settings = JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8'));
@@ -135,6 +135,22 @@ check('every vendored magento skill has a parseable description', () => {
 		bad.push(`${name}: ${lines[i]}`);
 	}
 	assert.deepEqual(bad, [], `unparseable description(s): ${bad.join('; ')}`);
+});
+
+check('--mcp codegraph also wires permissions and the CodeGraph hook', () => {
+	run('install', '--mcp', 'codegraph');
+	const settings = JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8'));
+	assert.ok(settings.permissions.allow.includes('mcp__codegraph__*'));
+	assert.ok(settings.permissions.allow.includes('Shell(codegraph *)'));
+	assert.ok(settings.hooks.PreToolUse.some(g => (g.hooks ?? []).some(h => /codegraph-hook\.cjs/.test(h.command))));
+	assert.ok(settings.hooks.PostToolUse.some(g => (g.hooks ?? []).some(h => /codegraph-hook\.cjs/.test(h.command))));
+	assert.ok(existsSync(join(cc, 'hooks', 'codegraph', 'codegraph-hook.cjs')));
+
+	run('uninstall');
+	const after = existsSync(join(cc, 'settings.json')) ? JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8')) : {};
+	assert.ok(!after.hooks?.PreToolUse, 'codegraph hooks must be removed');
+	assert.ok(!after.permissions?.allow, 'codegraph permissions must be removed');
+	assert.ok(!existsSync(join(cc, 'hooks', 'codegraph')));
 });
 
 rmSync(proj, {recursive: true, force: true});

@@ -186,6 +186,11 @@ function install(opts) {
 		}
 	}
 
+	// 6. CodeGraph wiring — only when its MCP preset is selected (mirrors Claude Code).
+	const codegraph = opts.mcp.includes('codegraph')
+		? installCodegraph({opts, ccDir})
+		: {hooks: [], permissions: []};
+
 	if (!opts.dryRun) {
 		writeFileSync(
 			join(ccDir, MANIFEST),
@@ -201,6 +206,7 @@ function install(opts) {
 					commands,
 					mcp,
 					components,
+					codegraph,
 				},
 				null,
 				2,
@@ -214,10 +220,11 @@ function install(opts) {
 			? `${A.yellow}Dry run — nothing written.${A.reset}`
 			: `${A.green}proflow ${pkg.version} installed.${A.reset}`,
 	);
-	info(`  commands  /spec /to-plan /build /test /to-review /ship (via the mod)`);
+	info(`  commands  /brainstorm /spec /to-plan /build /test /to-review /ship (via the mod)`);
 	if (opts.skills) info(`  skills    ${skills.length} → ${join(ccDir, 'skills')}`);
 	if (opts.agents) info(`  agents    ${agents.length} → ${join(ccDir, 'agents')}`);
 	if (mcp.servers.length) info(`  mcp       ${mcp.servers.join(', ')} → ${mcp.file}`);
+	if (codegraph.hooks.length) info(`  codegraph allow+hooks → ${join(ccDir, 'settings.json')}`);
 	if (components.magento2) {
 		const c = components.magento2;
 		info(`  magento2  ${c.skills.length} skills · ${c.commands.length} commands · ${c.agents.length} agents · ${c.hooks.length} hook(s)`);
@@ -362,47 +369,112 @@ function installMagento2Hooks({opts, ccDir}) {
 			? join(destDir, 'guard-docs-path.sh')
 			: './.commandcode/hooks/m2/guard-docs-path.sh';
 	const command = `bash ${guard}`;
-	if (!opts.dryRun) mergeHook(join(ccDir, 'settings.json'), {matcher: 'write|edit', hooks: [{type: 'command', command, timeout: 10}]});
+	mergeHookEntry(join(ccDir, 'settings.json'), 'PreToolUse', {matcher: 'write|edit', hooks: [{type: 'command', command, timeout: 10}]}, opts);
 	return [command];
 }
 
-function mergeHook(file, entry) {
-	let settings = {};
-	if (existsSync(file)) {
-		try {
-			settings = JSON.parse(readFileSync(file, 'utf8'));
-		} catch {
-			warn(`could not parse ${file} — skipping the magento2 hook`);
-			return;
-		}
+function readSettings(file) {
+	if (!existsSync(file)) return {};
+	try {
+		return JSON.parse(readFileSync(file, 'utf8'));
+	} catch {
+		warn(`could not parse ${file} — leaving it untouched`);
+		return null;
 	}
-	settings.hooks = settings.hooks ?? {};
-	settings.hooks.PreToolUse = settings.hooks.PreToolUse ?? [];
-	const command = entry.hooks[0].command;
-	if (settings.hooks.PreToolUse.some(group => (group.hooks ?? []).some(h => h.command === command))) return;
-	settings.hooks.PreToolUse.push(entry);
+}
+
+function writeSettings(file, settings, opts) {
+	if (opts?.dryRun) return;
 	mkdirSync(dirname(file), {recursive: true});
 	writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
-function removeMagento2Hooks(ccDir, commands, opts) {
-	const file = join(ccDir, 'settings.json');
-	if (existsSync(file)) {
-		try {
-			const settings = JSON.parse(readFileSync(file, 'utf8'));
-			if (Array.isArray(settings.hooks?.PreToolUse)) {
-				settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter(
-					group => !(group.hooks ?? []).some(h => commands.includes(h.command)),
-				);
-				if (settings.hooks.PreToolUse.length === 0) delete settings.hooks.PreToolUse;
-				if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
-				if (!opts.dryRun) writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
-			}
-		} catch {
-			// unparseable settings: leave them alone
-		}
+/** Append a hook entry to `settings.hooks[event]` unless the same command is already there. */
+function mergeHookEntry(file, event, entry, opts) {
+	const settings = readSettings(file);
+	if (!settings) return false;
+	settings.hooks = settings.hooks ?? {};
+	settings.hooks[event] = settings.hooks[event] ?? [];
+	const command = entry.hooks[0].command;
+	if (settings.hooks[event].some(group => (group.hooks ?? []).some(h => h.command === command))) return true;
+	settings.hooks[event].push(entry);
+	writeSettings(file, settings, opts);
+	return true;
+}
+
+/** Add entries to `permissions.allow` (idempotent). */
+function mergePermissions(file, entries, opts) {
+	const settings = readSettings(file);
+	if (!settings) return false;
+	settings.permissions = settings.permissions ?? {};
+	settings.permissions.allow = settings.permissions.allow ?? [];
+	for (const entry of entries) {
+		if (!settings.permissions.allow.includes(entry)) settings.permissions.allow.push(entry);
 	}
+	writeSettings(file, settings, opts);
+	return true;
+}
+
+/** Remove every hook entry whose command is in `commands`, across all events. */
+function removeHookEntries(file, commands, opts) {
+	const settings = readSettings(file);
+	if (!settings?.hooks) return;
+	for (const event of Object.keys(settings.hooks)) {
+		settings.hooks[event] = settings.hooks[event].filter(
+			group => !(group.hooks ?? []).some(h => commands.includes(h.command)),
+		);
+		if (settings.hooks[event].length === 0) delete settings.hooks[event];
+	}
+	if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+	writeSettings(file, settings, opts);
+}
+
+function removePermissions(file, entries, opts) {
+	const settings = readSettings(file);
+	if (!Array.isArray(settings?.permissions?.allow)) return;
+	settings.permissions.allow = settings.permissions.allow.filter(entry => !entries.includes(entry));
+	if (settings.permissions.allow.length === 0) delete settings.permissions.allow;
+	if (Object.keys(settings.permissions).length === 0) delete settings.permissions;
+	writeSettings(file, settings, opts);
+}
+
+function removeMagento2Hooks(ccDir, commands, opts) {
+	removeHookEntries(join(ccDir, 'settings.json'), commands, opts);
 	rmSync(join(ccDir, 'hooks', 'm2'), {recursive: true, force: true});
+}
+
+/**
+ * CodeGraph wiring — mirrors the Claude Code + GitNexus setup: install the hook
+ * script, allow the MCP tools and the CLI, and register the PreToolUse augment
+ * and PostToolUse freshness hooks.
+ */
+function installCodegraph({opts, ccDir}) {
+	const src = join(PKG_ROOT, 'hooks', 'codegraph-hook.cjs');
+	if (!existsSync(src)) {
+		warn('codegraph hook not found in the package');
+		return {hooks: [], permissions: []};
+	}
+	const destDir = join(ccDir, 'hooks', 'codegraph');
+	copyInto(src, join(destDir, 'codegraph-hook.cjs'), opts);
+	if (!opts.dryRun) ok(`hooks    codegraph-hook.cjs → ${destDir}`);
+
+	const command =
+		opts.scope === 'global'
+			? `node ${join(destDir, 'codegraph-hook.cjs')}`
+			: 'node ./.commandcode/hooks/codegraph/codegraph-hook.cjs';
+	const permissions = ['mcp__codegraph__*', 'Shell(codegraph *)'];
+	const file = join(ccDir, 'settings.json');
+	mergePermissions(file, permissions, opts);
+	mergeHookEntry(file, 'PreToolUse', {matcher: 'read|shell', hooks: [{type: 'command', command, timeout: 10}]}, opts);
+	mergeHookEntry(file, 'PostToolUse', {matcher: 'shell', hooks: [{type: 'command', command, timeout: 10}]}, opts);
+	return {hooks: [command], permissions};
+}
+
+function removeCodegraph(ccDir, wiring, opts) {
+	const file = join(ccDir, 'settings.json');
+	if (wiring?.hooks?.length) removeHookEntries(file, wiring.hooks, opts);
+	if (wiring?.permissions?.length) removePermissions(file, wiring.permissions, opts);
+	rmSync(join(ccDir, 'hooks', 'codegraph'), {recursive: true, force: true});
 }
 
 function uninstall(opts) {
@@ -428,6 +500,7 @@ function uninstall(opts) {
 		removeMagento2Hooks(ccDir, magento.hooks ?? [], opts);
 	}
 	removeMcp(manifest.mcp, opts);
+	removeCodegraph(ccDir, manifest.codegraph, opts);
 	if (!opts.dryRun) rmSync(join(ccDir, MANIFEST), {force: true});
 	pruneEmpty([join(ccDir, 'mods'), join(ccDir, 'skills'), join(ccDir, 'agents'), join(ccDir, 'commands'), join(ccDir, 'hooks')]);
 	ok(`proflow uninstalled from ${ccDir}`);
@@ -455,6 +528,7 @@ function status(opts) {
 	info(`  agents   ${manifest.agents?.length ?? 0}`);
 	info(`  commands ${manifest.commands?.length ?? 0}${manifest.commands?.length ? '' : ' (provided by the mod)'}`);
 	if (manifest.mcp?.servers?.length) info(`  mcp      ${manifest.mcp.servers.join(', ')} → ${manifest.mcp.file}`);
+	if (manifest.codegraph?.hooks?.length) info(`  codegraph allow + hooks → ${join(ccDir, 'settings.json')}`);
 	if (manifest.components?.magento2) {
 		const c = manifest.components.magento2;
 		info(`  magento2 ${c.skills?.length ?? 0} skills, ${c.commands?.length ?? 0} commands, ${c.agents?.length ?? 0} agents`);
