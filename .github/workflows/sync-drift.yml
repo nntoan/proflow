@@ -1,0 +1,39 @@
+name: Vendor drift
+
+# Weekly check that the committed vendored trees still match upstream. If a sync
+# would change the tree, this fails so a maintenance PR is opened. See
+# docs/RELEASING.md §5.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Re-vendor both upstreams
+        run: |
+          npm run sync
+          npm run sync:magento2
+
+      - name: Fail if the vendored tree would change
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::vendored upstream content changed — open a re-vendor PR (review the diff, run 'npm test', commit)"
+            git diff --stat
+            exit 1
+          fi
+
+      - name: Tests on the current tree
+        run: npm test

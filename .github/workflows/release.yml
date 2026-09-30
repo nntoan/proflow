@@ -1,0 +1,47 @@
+name: Release
+
+# Publishing is tag-driven: `npm version <patch|minor|major>` (which commits and
+# creates the tag), then `git push --follow-tags`. This workflow asserts the tag
+# matches package.json, runs the tests, publishes with provenance, and cuts a
+# GitHub release. See docs/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm provenance (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Tag must match package.json version
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::tag v$tag does not match package.json version $pkg — bump with 'npm version $tag'"
+            exit 1
+          fi
+
+      - name: Tests
+        run: npm test
+
+      - name: Publish to npm (provenance)
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

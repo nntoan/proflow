@@ -1,9 +1,21 @@
 {
 	"name": "@nntoan/proflow",
 	"version": "0.1.0",
-	"description": "Command Code mod that deep-integrates addyosmani/agent-skills — 25 engineering skills plus the /spec, /to-plan, /build, /test, /to-review and /ship lifecycle commands.",
+	"description": "Command Code mod that deep-integrates addyosmani/agent-skills — 25 engineering skills plus the /brainstorm, /spec, /to-plan, /build, /test, /to-review and /ship lifecycle commands.",
 	"license": "MIT",
 	"type": "commonjs",
+	"author": "Toan Nguyen",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nntoan/proflow.git"
+	},
+	"homepage": "https://github.com/nntoan/proflow#readme",
+	"bugs": {
+		"url": "https://github.com/nntoan/proflow/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"commandcode": {
 		"mods": ["./mods/proflow.ts"]
 	},
@@ -16,7 +28,7 @@
 		"skills/",
 		"references/",
 		"agents/",
-		"docs/",
+		"docs/agents.md",
 		"components/",
 		"hooks/",
 		"scripts/install.mjs",
@@ -30,7 +42,9 @@
 		"sync": "node scripts/sync-upstream.mjs",
 		"sync:magento2": "node scripts/sync-magento2.mjs",
 		"proflow:install": "node scripts/install.mjs install",
-		"proflow:uninstall": "node scripts/install.mjs uninstall"
+		"proflow:uninstall": "node scripts/install.mjs uninstall",
+		"release:check": "npm test && npm pack --dry-run",
+		"prepublishOnly": "npm test"
 	},
 	"keywords": [
 		"commandcode",
@@ -42,6 +56,6 @@
 		"code-review"
 	],
 	"engines": {
-		"node": ">=18"
+		"node": ">=22.13"
 	}
 }

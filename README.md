@@ -259,7 +259,8 @@ Set options at launch with `--mod-option name=value`:
 | `scripts/sync-upstream.mjs` | Re-vendors agent-skills (`npm run sync [ref]`). |
 | `scripts/sync-magento2.mjs` | Vendors + adapts the magento2-tools component (`npm run sync:magento2 [ref]`). |
 | `components/magento2/` | The vendored magento2 component (skills, commands, agents, hooks). |
-| `docs/adr/`, `docs/verification.md` | The Magento integration ADR and the behavioural verification guide. |
+| `docs/adr/`, `docs/verification.md`, `docs/RELEASING.md` | The Magento integration ADR, the behavioural verification guide, and the release runbook. |
+| `.github/workflows/` | CI (tests on push/PR), Release (publish on `v*` tags, with provenance), Vendor drift (weekly upstream check). |
 | `test/smoke.mjs`, `test/vendor.mjs`, `test/install.mjs` | Mod-surface, vendoring, and installer tests (`npm test`). |
 
 Refresh the vendored content:
@@ -278,6 +279,8 @@ npm test                # mod surface (19) + vendor (6) + installer (9) checks
 cmd mods list           # proflow listed, no load warnings
 cmd skills list         # 25 project skills after an install
 ```
+
+Releasing (first time and CI afterwards): see [`docs/RELEASING.md`](docs/RELEASING.md).
 
 The smoke test loads the mod with a mock `ModApi` and exercises every registered surface: the seven
 commands, the argument grammar, the `agent_skills` tool (list/load/reference/persona plus the
