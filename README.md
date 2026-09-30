@@ -4,12 +4,12 @@
 mod that deep-integrates [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 into a single installable package.
 
-It packages the 25 upstream skills, 7 shared reference checklists, and 4 specialist personas,
-then wires the full development lifecycle into six slash commands:
+It packages the 25 upstream skills, 7 shared reference checklists, and 5 specialist personas,
+then wires the full development lifecycle into seven slash commands:
 
 ```
 DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP
-/spec   /to-plan  /build  /test   /to-review  /ship
+/idea   /spec   /to-plan  /build  /test   /to-review  /ship
 ```
 
 `/plan` and `/review` are reserved by Command Code, so the planning and review commands are
@@ -17,7 +17,7 @@ named `/to-plan` and `/to-review` (same convention as proflow).
 
 ## What you get
 
-- **Six lifecycle commands** that drive the matching skill workflows end to end.
+- **Seven lifecycle commands** that drive the matching skill workflows end to end.
 - **`agent_skills`** — a model-callable tool for progressive disclosure: `list` the catalog,
   then `load` exactly the skill, reference checklist, or persona a task needs.
 - **A byte-stable catalog** appended to the system prompt so the model knows which skill
@@ -26,7 +26,7 @@ named `/to-plan` and `/to-review` (same convention as proflow).
 ## Install
 
 proflow ships its own installer, so there is no git clone and nothing to copy by hand. One command
-provisions everything — the mod, the 25 native skills, and the 4 personas — into a single Command
+provisions everything — the mod, the 25 native skills, and the 5 personas — into a single Command
 Code scope:
 
 ```bash
@@ -37,17 +37,18 @@ npx @nntoan/proflow status             # show what is installed
 ```
 
 Flags: `--force` (overwrite a same-named skill proflow does not own), `--dry-run`, `--no-skills`,
-`--no-agents`, and `--commands` (also drop native command files — only needed if you don't load the
-mod).
+`--no-agents`, `--commands` (also drop native command files — only needed if you don't load the
+mod), and `--mcp <name>` (bundle an MCP server — see [Bundled MCP servers](#bundled-mcp-servers)).
 
 What lands where, under the target scope's `.commandcode/`:
 
 | Path | What | How Command Code sees it |
 | --- | --- | --- |
-| `mods/proflow/` | the mod package | dir-manifest auto-discovery → the six commands + the `agent_skills` tool |
+| `mods/proflow/` | the mod package | dir-manifest auto-discovery → the seven commands + the `agent_skills` tool |
 | `skills/<name>/` | the 25 skills | native — `/skills`, `/skill:<name>`, `activate_skill` |
-| `agents/*.md` | the 4 personas | native subagents — `subagent_type: "code-reviewer"` (used by `/ship`) |
+| `agents/*.md` | the 5 personas | native subagents — `subagent_type: "spec-reviewer"`, `"code-reviewer"`, … |
 | `proflow.manifest.json` | the install record | drives `uninstall` and collision protection |
+| `.mcp.json` / `~/.commandcode/mcp.json` | only with `--mcp` | an MCP server, merged in |
 
 Restart Command Code (or run `/reload`), then `cmd mods list` should show `proflow` and
 `cmd skills list` should show the 25 project skills. A brand-new workspace builds its mod index on
@@ -60,16 +61,68 @@ cmd mods add @nntoan/proflow    # mod only (the agent_skills tool still serves t
 cmd --mod ./mods/proflow.ts     # try it without installing
 ```
 
+### Bundled MCP servers
+
+The mod **cannot** register MCP servers — the ModApi has no such seam (`addTool`, `addCommand`,
+`addProvider`, `hooks`, `on`, … only). So the installer does it: `--mcp <name>` merges a known
+server into the scope's config.
+
+```bash
+npx @nntoan/proflow install --mcp codegraph
+```
+
+| Preset | Server | Written to |
+| --- | --- | --- |
+| `codegraph` | `codegraph serve --mcp` (stdio) | project: `<repo>/.mcp.json` (committed) · global: `~/.commandcode/mcp.json` |
+
+`uninstall` removes only the servers proflow added; other servers in the file are left alone. If the
+server's binary is not on `PATH`, the installer warns.
+
+**Why CodeGraph can look "enabled but unused".** Being enabled is not the same as being *indexed*.
+Your `AGENTS.md` tells the model to skip CodeGraph entirely unless a `.codegraph/` directory exists
+at the repo root, and `cmd mcp list` showing the server enabled does not create one. Build the index
+with `codegraph init` (it creates `.codegraph/`), then the model will reach for
+`codegraph_explore` before grep. `/idea` and `/spec`'s recon step explicitly prefer CodeGraph when
+it is available.
+
 ## Commands
 
 | Command | Use it for | What it does |
 | --- | --- | --- |
-| `/spec <goal>` | Defining work | Loads `spec-driven-development`, asks clarifying questions, writes `docs/spec/<feature>/SPEC.md`, and stops at an approve-vs-reflect gate. |
-| `/to-plan <goal>` | Planning approved work | Loads `planning-and-task-breakdown`, reads the spec, enters plan mode, and writes `tasks/plan.md` + `tasks/todo.md`. |
+| `/idea <idea>` | Sharpening a fuzzy idea | Loads `idea-refine`; fans out research/scouting subagents, diverges then converges, and writes a one-page `docs/spec/<id>/IDEA.md`. Hands off to `/spec`. |
+| `/spec <goal\|ticket\|version>` | Defining work | Recons with parallel subagents **before** interviewing, drafts `docs/spec/<id>/SPEC.md`, then runs a reflection loop with the `spec-reviewer` persona and an approval gate. |
+| `/to-plan <goal>` | Planning approved work | Loads `planning-and-task-breakdown`, reads `docs/spec/<id>/`, enters plan mode, and writes `tasks/plan.md` + `tasks/todo.md`. |
 | `/build [auto]` | One slice, or the whole plan | Loads `incremental-implementation` + `test-driven-development`; runs RED → GREEN → regression → build → commit for the next task, or every task with `auto`. |
 | `/test [scope]` | Proving behavior | Loads `test-driven-development`; new features go test-first, bugs use the Prove-It reproduction pattern. |
 | `/to-review [scope]` | Reviewing changes | Loads `code-review-and-quality`; five-axis review (correctness, readability, architecture, security, performance) with `file:line` findings. |
 | `/ship [scope]` | Release readiness | Loads `shipping-and-launch`; fans out to three personas in parallel (`agent` tool), merges their reports, and returns GO/NO-GO plus a rollback plan. |
+
+### Specs
+
+Every spec lives in its own directory — `docs/spec/<id>/SPEC.md`, where `<id>` is a ticket id
+(`PROJ-7`), a feature slug (`user-sso`), or a version (`v1.3`). A repository-root `SPEC.md` is never
+the canonical spec. `/spec` writes three siblings:
+
+| File | Purpose |
+| --- | --- |
+| `SPEC.md` | the specification (six core areas + success criteria) |
+| `explore-brief.md` | recon findings, assumptions, and the interview Q&A |
+| `review-log.md` | one entry per reflection round: issues raised and how they were resolved |
+
+The flow is **recon → interview → draft → reflect → approve**:
+
+1. **Recon** — parallel subagents scout the codebase (`explore`; CodeGraph first when available) and
+   research prior art/external approaches (`general`) *before* the first question, so the interview
+   starts from evidence. Findings land in `explore-brief.md`.
+2. **Interview** — one question at a time (the `interview-me` skill); each answer is appended to
+   `explore-brief.md`.
+3. **Draft** — `docs/spec/<id>/SPEC.md`.
+4. **Reflect** — the `spec-reviewer` persona reviews the draft and returns severity-ranked findings;
+   each 🔴 Blocking / 🟡 Should-fix item is put to you through the question tool (fix / accept /
+   defer), fixes are applied, the round is logged, and the review repeats (cap 5 rounds).
+5. **Approve** — a final question-tool gate: approve, refine, or reject. Only then is the spec done.
+
+`/to-plan` and `/build` read `docs/spec/<id>/` (spec + brief + log) rather than a root `SPEC.md`.
 
 ### Arguments
 
@@ -105,8 +158,8 @@ fields:
   `spec-driven-development` through `test-driven-development` to `shipping-and-launch`).
 - `reference` returns one of the 7 shared checklists (definition-of-done, security, testing,
   performance, accessibility, observability, orchestration patterns).
-- `persona` returns one of the 4 specialist briefs (code-reviewer, security-auditor,
-  test-engineer, web-performance-auditor) — used by `/ship`.
+- `persona` returns one of the 5 specialist briefs (spec-reviewer, code-reviewer, security-auditor,
+  test-engineer, web-performance-auditor) — used by `/spec` and `/ship`.
 
 The catalog rides in the system prompt, so the skill names and one-line descriptions are
 always visible; bodies load only on demand.
@@ -137,8 +190,9 @@ Set options at launch with `--mod-option name=value`:
 | Path | Contents |
 | --- | --- |
 | `mods/proflow.ts` | The mod: commands, the `agent_skills` tool, the catalog hook, flags, the argument engine. Reads everything else relative to itself, so the package is self-contained. |
-| `commands/*.md` | The six lifecycle workflows (authored for Command Code). The mod reads these at load; they are not overwritten by the sync script. |
-| `skills/`, `references/`, `agents/`, `docs/agents.md` | Vendored verbatim from addyosmani/agent-skills. |
+| `commands/*.md` | The seven lifecycle workflows (authored for Command Code). The mod reads these at load; they are not overwritten by the sync script. |
+| `agents/spec-reviewer.md` | The spec reflection persona (authored here), installed as a native subagent. |
+| `skills/`, `references/`, `agents/` (rest), `docs/agents.md` | Vendored verbatim from addyosmani/agent-skills. |
 | `scripts/install.mjs` | The installer (`npx @nntoan/proflow install|uninstall|status`) — the `proflow` bin. |
 | `scripts/sync-upstream.mjs` | Re-vendors the upstream content (`npm run sync [ref]`). |
 | `test/smoke.mjs`, `test/install.mjs` | Mod-surface and installer tests (`npm test`). |
@@ -155,15 +209,16 @@ Provenance for the vendored snapshot is recorded in `VENDOR.json`.
 ## Verify
 
 ```bash
-npm test                # mod surface (17) + installer (5) checks
+npm test                # mod surface (19) + installer (6) checks
 cmd mods list           # proflow listed, no load warnings
 cmd skills list         # 25 project skills after an install
 ```
 
-The smoke test loads the mod with a mock `ModApi` and exercises every registered surface: the six
+The smoke test loads the mod with a mock `ModApi` and exercises every registered surface: the seven
 commands, the argument grammar, the `agent_skills` tool (list/load/reference/persona plus the
 unknown-name error path), and the catalog hook. The installer test provisions into a throwaway
-project and asserts the layout, idempotency, collision protection, and a clean uninstall.
+project and asserts the layout, idempotency, collision protection, `--mcp` bundling, and a clean
+uninstall.
 
 ## License
 
