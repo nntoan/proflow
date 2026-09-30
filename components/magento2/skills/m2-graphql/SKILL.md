@@ -1,12 +1,8 @@
 ---
 name: m2-graphql
 version: 1.0.6
-description:
-    Schema-first generator for Magento 2 GraphQL surfaces. Use when the user wants to
-    add a GraphQL query, mutation, type, or batch loader. Generates schema.graphqls,
-    resolvers, batch resolvers, auth checks, and tests. Goes beyond m2-module-create's
-    graphql surface by handling batch loading patterns, auth/store-scope correctly, and
-    schema migration.
+description: >-
+    Schema-first generator for Magento 2 GraphQL surfaces. Use when the user wants to add a GraphQL query, mutation, type, or batch loader. Generates schema.graphqls, resolvers, batch resolvers, auth checks, and tests. Goes beyond m2-module-create's graphql surface by handling batch loading patterns, auth/store-scope correctly, and schema migration.
 ---
 
 # Magento 2 GraphQL Create

@@ -1,11 +1,8 @@
 ---
 name: m2-i18n
 version: 1.3.0
-description:
-    Translation extraction and management for Magento 2 modules. Use when the user wants
-    to extract translatable phrases, add a new locale, sync existing CSV with current
-    code, or validate placeholder consistency across locales. Produces or updates
-    {Module}/i18n/{locale}.csv files. Optionally machine-translates new locales.
+description: >-
+    Translation extraction and management for Magento 2 modules. Use when the user wants to extract translatable phrases, add a new locale, sync existing CSV with current code, or validate placeholder consistency across locales. Produces or updates {Module}/i18n/{locale}.csv files. Optionally machine-translates new locales.
 ---
 
 # Magento 2 i18n

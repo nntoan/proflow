@@ -1,13 +1,8 @@
 ---
 name: m2-a11y-audit
 version: 1.1.1
-description:
-    Audit a Magento 2 module's/theme's storefront templates for WCAG accessibility issues
-    — missing alt text, unlabelled form controls, ARIA misuse, heading-order breaks,
-    keyboard/tab-index problems, and LESS color-contrast heuristics — and emit ranked
-    findings (Markdown + JSON + SARIF). Static-first (no running instance needed); optional
-    opt-in pa11y runtime pass. For building accessible frontend assets use
-    `m2-frontend`; for general module quality use `m2-review`.
+description: >-
+    Audit a Magento 2 module's/theme's storefront templates for WCAG accessibility issues — missing alt text, unlabelled form controls, ARIA misuse, heading-order breaks, keyboard/tab-index problems, and LESS color-contrast heuristics — and emit ranked findings (Markdown + JSON + SARIF). Static-first (no running instance needed); optional opt-in pa11y runtime pass. For building accessible frontend assets use `m2-frontend`; for general module quality use `m2-review`.
 ---
 
 # Magento 2 Accessibility Audit

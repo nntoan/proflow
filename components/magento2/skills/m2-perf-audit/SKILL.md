@@ -1,13 +1,8 @@
 ---
 name: m2-perf-audit
 version: 1.2.0
-description:
-    Performance audit of Magento 2 modules or the overall site. Use when the user reports
-    slowness, wants a pre-launch performance check, suspects N+1 queries, or wants to
-    review caching/indexer/queue behaviour. Produces severity-ranked findings in Markdown,
-    JSON, and SARIF. Combines static analysis with optional runtime checks; never assumes
-    a running Magento instance. Produces actionable, severity-ranked findings — vs the lighter
-    read-only slow-query inspection in m2-debug.
+description: >-
+    Performance audit of Magento 2 modules or the overall site. Use when the user reports slowness, wants a pre-launch performance check, suspects N+1 queries, or wants to review caching/indexer/queue behaviour. Produces severity-ranked findings in Markdown, JSON, and SARIF. Combines static analysis with optional runtime checks; never assumes a running Magento instance. Produces actionable, severity-ranked findings — vs the lighter read-only slow-query inspection in m2-debug.
 ---
 
 # Magento 2 Performance Audit

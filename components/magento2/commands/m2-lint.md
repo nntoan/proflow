@@ -1,5 +1,6 @@
 ---
-description: Run the static-analysis gate (phpcs, phpstan, phpmd, php-cs-fixer, rector) and apply safe auto-fixes for a Magento 2 module (lint).
+description: >-
+    Run the static-analysis gate (phpcs, phpstan, phpmd, php-cs-fixer, rector) and apply safe auto-fixes for a Magento 2 module (lint).
 argument-hint: "[--diff [ref]] [<Vendor>_<Module>]"
 disable-model-invocation: true
 ---

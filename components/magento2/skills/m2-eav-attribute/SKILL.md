@@ -1,13 +1,8 @@
 ---
 name: m2-eav-attribute
 version: 1.3.2
-description:
-    Add a Magento 2 EAV attribute (product, customer, customer-address, or category) via
-    an idempotent data patch. Use when the user wants to add a product/customer/category
-    attribute. Handles scope (global/website/store), input type, backend/source/frontend
-    models, indexer registration, form/grid visibility, and admin section assignment.
-    Produces a Setup/Patch/Data/ class that passes m2-review. For non-EAV or bulk
-    data seeding/migration use m2-data-migration.
+description: >-
+    Add a Magento 2 EAV attribute (product, customer, customer-address, or category) via an idempotent data patch. Use when the user wants to add a product/customer/category attribute. Handles scope (global/website/store), input type, backend/source/frontend models, indexer registration, form/grid visibility, and admin section assignment. Produces a Setup/Patch/Data/ class that passes m2-review. For non-EAV or bulk data seeding/migration use m2-data-migration.
 ---
 
 # Magento 2 EAV Attribute

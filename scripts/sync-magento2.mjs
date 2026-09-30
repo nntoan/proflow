@@ -92,6 +92,28 @@ try {
 		writeFileSync(destFile, text);
 	}
 
+	// Upstream writes `description:` as a plain multi-line scalar. Command Code's
+	// YAML parser rejects that when a continuation line contains ": " (e.g.
+	// "... the full lifecycle: requirement analysis ..."), which silently drops
+	// the skill. Normalise the description to a folded block scalar so it always
+	// parses; a value already written as `>-`/`|` is left alone.
+	function normalizeDescription(text) {
+		const fm = /^(---\r?\n)([\s\S]*?)(\r?\n---)/.exec(text);
+		if (!fm) return text;
+		const lines = fm[2].split(/\r?\n/);
+		const idx = lines.findIndex(line => /^description:/.test(line));
+		if (idx === -1) return text;
+		let end = idx + 1;
+		while (end < lines.length && !/^[A-Za-z0-9_-]+:/.test(lines[end])) end += 1;
+		const inline = lines[idx].replace(/^description:[ \t]*/, '');
+		if (/^[>|]/.test(inline)) return text;
+		const value = [inline, ...lines.slice(idx + 1, end).map(line => line.trim())]
+			.filter(Boolean)
+			.join(' ');
+		const rebuilt = [...lines.slice(0, idx), 'description: >-', `    ${value}`, ...lines.slice(end)];
+		return fm[1] + rebuilt.join('\n') + fm[3] + text.slice(fm[0].length);
+	}
+
 	function copyTree(srcDir, destDir, extraForSkillMd) {
 		for (const entry of readdirSync(srcDir)) {
 			const src = join(srcDir, entry);
@@ -122,10 +144,11 @@ try {
 
 	rmSync(OUT, {recursive: true, force: true});
 
-	// Skills — prefix dir + `name:`.
+	// Skills — prefix dir + `name:`, and make the description parse.
 	for (const name of skillNames) {
-		const addName = text => text.replace(/^name:[ \t]*.*$/m, `name: m2-${name}`);
-		copyTree(join(stage, 'skills', name), join(OUT, 'skills', `m2-${name}`), addName);
+		const onSkillMd = text =>
+			normalizeDescription(text.replace(/^name:[ \t]*.*$/m, `name: m2-${name}`));
+		copyTree(join(stage, 'skills', name), join(OUT, 'skills', `m2-${name}`), onSkillMd);
 	}
 
 	// Commands — rename to m2-<verb>.
@@ -134,7 +157,7 @@ try {
 		? readdirSync(commandsDir).filter(f => f.endsWith('.md'))
 		: [];
 	for (const file of commandVerbs) {
-		writeTransformed(join(commandsDir, file), join(OUT, 'commands', `m2-${file}`));
+		writeTransformed(join(commandsDir, file), join(OUT, 'commands', `m2-${file}`), normalizeDescription);
 	}
 
 	// Agents — keep names, fix tool ids.
@@ -142,15 +165,17 @@ try {
 	const agentNames = existsSync(agentsDir) ? readdirSync(agentsDir).filter(f => f.endsWith('.md')) : [];
 	for (const file of agentNames) {
 		writeTransformed(join(agentsDir, file), join(OUT, 'agents', file), text =>
-			text.replace(/^tools:[ \t]*(.*)$/m, (line, list) => {
-				const mapped = list
-					.split(',')
-					.map(t => t.trim())
-					.filter(Boolean)
-					.map(t => AGENT_TOOLS[t] || t)
-					.join(', ');
-				return `tools: ${mapped}`;
-			}),
+			normalizeDescription(
+				text.replace(/^tools:[ \t]*(.*)$/m, (line, list) => {
+					const mapped = list
+						.split(',')
+						.map(t => t.trim())
+						.filter(Boolean)
+						.map(t => AGENT_TOOLS[t] || t)
+						.join(', ');
+					return `tools: ${mapped}`;
+				}),
+			),
 		);
 	}
 

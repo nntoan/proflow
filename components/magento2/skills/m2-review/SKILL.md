@@ -1,7 +1,7 @@
 ---
 name: m2-review
 version: 2.4.1
-description:
+description: >-
     Review Magento 2 modules for architecture, Magento framework requirements, best practices, security, code quality, maintainability, PHPDoc, SOLID/DRY/KISS/SRP, and test coverage. Use when asked to audit, review, validate, assess, or report on a Magento 2 module, including app/code modules, package-source modules, composer-distributed modules, controller/service/model/template/config/schema reviews, or release-readiness checks. The skill is environment-independent: it must not assume Docker, Make, bin/magento, installed dependencies, a database, network access, or a running Magento instance, and should use available static-analysis tools opportunistically. For security-only depth (CVEs, secrets, Marketplace EQP) use m2-security; for performance-only depth use m2-perf-audit.
 ---
 

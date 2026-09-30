@@ -116,6 +116,27 @@ check('--component magento2 installs its skills, commands, agents, and hook', ()
 	assert.ok(!after.hooks, 'the hook entry must be removed from settings.json');
 });
 
+check('every vendored magento skill has a parseable description', () => {
+	// Command Code drops a skill whose `description:` is a plain multi-line
+	// scalar containing ": " — assert the sync normalised them all.
+	const dir = join(ROOT, 'components', 'magento2', 'skills');
+	const bad = [];
+	for (const name of readdirSync(dir)) {
+		const file = join(dir, name, 'SKILL.md');
+		if (!existsSync(file)) continue;
+		const lines = readFileSync(file, 'utf8').split('\n');
+		const i = lines.findIndex(line => line.startsWith('description:'));
+		if (i === -1) {
+			bad.push(`${name}: no description`);
+			continue;
+		}
+		if (/^description:\s*(>[+-]?|\|[+-]?)\s*$/.test(lines[i])) continue; // block scalar
+		if (/^description:\s*\S/.test(lines[i]) && !/^\s+\S/.test(lines[i + 1] ?? '')) continue; // single line
+		bad.push(`${name}: ${lines[i]}`);
+	}
+	assert.deepEqual(bad, [], `unparseable description(s): ${bad.join('; ')}`);
+});
+
 rmSync(proj, {recursive: true, force: true});
 
 console.log(`\n✓ proflow installer test — ${checks.length} checks passed\n`);

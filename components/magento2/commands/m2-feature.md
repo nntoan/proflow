@@ -1,5 +1,6 @@
 ---
-description: End-to-end Magento 2 feature implementation orchestrator (feature)
+description: >-
+    End-to-end Magento 2 feature implementation orchestrator (feature)
 argument-hint: "\"<feature request>\" | resume ./.docs/<FeatureName>"
 disable-model-invocation: true
 ---

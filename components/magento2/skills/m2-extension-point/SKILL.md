@@ -1,12 +1,8 @@
 ---
 name: m2-extension-point
 version: 1.1.2
-description:
-    Wire behaviour onto an *existing* Magento 2 class without editing it — a **plugin**
-    (before/after/around interceptor + di.xml), an **observer** (events.xml + Observer),
-    or a **preference**. Use when the user wants to intercept a core/3rd-party method,
-    react to an event, or swap an implementation. For a whole new module use
-    `m2-module-create`; for multi-surface work use `m2-feature`.
+description: >-
+    Wire behaviour onto an *existing* Magento 2 class without editing it — a **plugin** (before/after/around interceptor + di.xml), an **observer** (events.xml + Observer), or a **preference**. Use when the user wants to intercept a core/3rd-party method, react to an event, or swap an implementation. For a whole new module use `m2-module-create`; for multi-surface work use `m2-feature`.
 ---
 
 # Magento 2 Extension Point

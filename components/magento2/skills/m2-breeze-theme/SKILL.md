@@ -1,15 +1,8 @@
 ---
 name: m2-breeze-theme
 version: 1.0.2
-description:
-    Scaffold a Swissup Breeze (Breezefront) child theme — theme.xml with a Swissup/breeze-*
-    parent, registration.php, composer.json, a Breeze-only layout handle, and Breeze-side
-    overrides in web/css/breeze/_default.less with @critical guards. Use when the user wants
-    a new Breeze child or custom theme. Detects Breeze via m2-context (theme.breeze) and
-    refuses with the install command when Breeze is absent. Sibling to m2-frontend,
-    which builds generic Luma/Hyva/custom themes plus RequireJS/Knockout/Alpine components; this
-    skill is Breeze-specific. To adapt an existing module to Breeze use m2-breeze-adapt;
-    to check a module's Breeze compatibility use m2-breeze-compat.
+description: >-
+    Scaffold a Swissup Breeze (Breezefront) child theme — theme.xml with a Swissup/breeze-* parent, registration.php, composer.json, a Breeze-only layout handle, and Breeze-side overrides in web/css/breeze/_default.less with @critical guards. Use when the user wants a new Breeze child or custom theme. Detects Breeze via m2-context (theme.breeze) and refuses with the install command when Breeze is absent. Sibling to m2-frontend, which builds generic Luma/Hyva/custom themes plus RequireJS/Knockout/Alpine components; this skill is Breeze-specific. To adapt an existing module to Breeze use m2-breeze-adapt; to check a module's Breeze compatibility use m2-breeze-compat.
 ---
 
 # Magento 2 Breeze Child Theme

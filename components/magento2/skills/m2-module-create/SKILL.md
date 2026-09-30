@@ -1,15 +1,8 @@
 ---
 name: m2-module-create
 version: 1.10.3
-description:
-    Create a new Magento 2 module under the project's vendor namespace. Use when asked to create,
-    scaffold, generate, or build a Magento 2 module, extension, component, or package. Produces a
-    module where every generated file immediately passes all 12 m2-review categories.
-    The skill is surface-driven: it only creates files required for declared surfaces and never
-    leaves empty placeholder files. Works without a running Magento instance, Docker, or installed
-    Composer dependencies. For a standalone admin form use m2-admin-form, a GraphQL
-    surface use m2-graphql, or a single EAV attribute use m2-eav-attribute —
-    this skill scaffolds a new module/extension, not a single sub-surface.
+description: >-
+    Create a new Magento 2 module under the project's vendor namespace. Use when asked to create, scaffold, generate, or build a Magento 2 module, extension, component, or package. Produces a module where every generated file immediately passes all 12 m2-review categories. The skill is surface-driven: it only creates files required for declared surfaces and never leaves empty placeholder files. Works without a running Magento instance, Docker, or installed Composer dependencies. For a standalone admin form use m2-admin-form, a GraphQL surface use m2-graphql, or a single EAV attribute use m2-eav-attribute — this skill scaffolds a new module/extension, not a single sub-surface.
 ---
 
 # Magento 2 Module Create

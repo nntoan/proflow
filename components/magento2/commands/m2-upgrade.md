@@ -1,5 +1,6 @@
 ---
-description: Detect BC breaks, deprecations, and required changes when upgrading a Magento 2 module to a new Magento/PHP version (upgrade).
+description: >-
+    Detect BC breaks, deprecations, and required changes when upgrading a Magento 2 module to a new Magento/PHP version (upgrade).
 argument-hint: "--to-magento=X.Y.Z [--to-php=X.Y] [--scan-only] <Vendor>_<Module>"
 disable-model-invocation: true
 ---

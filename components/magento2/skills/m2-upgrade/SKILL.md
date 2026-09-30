@@ -1,12 +1,8 @@
 ---
 name: m2-upgrade
 version: 1.2.0
-description:
-    Upgrade an existing Magento 2 module to a newer Magento version, newer PHP version,
-    or newer framework dependency. Use when the user wants to bump Magento support,
-    update PHP constraints, replace deprecated API usage, or scan for and remediate BC
-    breaks. Drives: deprecation scan → BC-break detection → patch generation → review →
-    test → report. Calls m2-review (diff mode) and m2-test-generate.
+description: >-
+    Upgrade an existing Magento 2 module to a newer Magento version, newer PHP version, or newer framework dependency. Use when the user wants to bump Magento support, update PHP constraints, replace deprecated API usage, or scan for and remediate BC breaks. Drives: deprecation scan → BC-break detection → patch generation → review → test → report. Calls m2-review (diff mode) and m2-test-generate.
 ---
 
 # Magento 2 Module Upgrade

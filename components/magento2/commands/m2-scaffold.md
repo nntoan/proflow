@@ -1,5 +1,6 @@
 ---
-description: Entry point for Magento 2 code generation — routes the request to the matching generator skill (defaults to module-create for a whole new module).
+description: >-
+    Entry point for Magento 2 code generation — routes the request to the matching generator skill (defaults to module-create for a whole new module).
 argument-hint: "[<type>] [<Vendor>_<Module>] [--flags]"
 ---
 Match the request to the generator skill below and invoke THAT skill directly, forwarding these arguments verbatim: $ARGUMENTS

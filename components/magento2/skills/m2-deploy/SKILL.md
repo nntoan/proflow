@@ -1,13 +1,8 @@
 ---
 name: m2-deploy
 version: 1.5.0
-description:
-  Deploy one or more Magento 2 modules with pre-flight validation, ordered execution,
-  smoke testing, and rollback on failure. Use when the user wants to deploy changes,
-  enable a new module, run setup:upgrade after a code change, or roll back a previous
-  deploy. Supports environment targets (local, staging, production) and produces a
-  deploy report. Used by m2-feature, m2-fix, and
-  m2-upgrade for their D* deploy step.
+description: >-
+    Deploy one or more Magento 2 modules with pre-flight validation, ordered execution, smoke testing, and rollback on failure. Use when the user wants to deploy changes, enable a new module, run setup:upgrade after a code change, or roll back a previous deploy. Supports environment targets (local, staging, production) and produces a deploy report. Used by m2-feature, m2-fix, and m2-upgrade for their D* deploy step.
 ---
 
 # Magento 2 Deploy

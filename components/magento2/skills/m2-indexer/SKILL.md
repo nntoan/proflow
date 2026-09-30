@@ -1,13 +1,8 @@
 ---
 name: m2-indexer
 version: 1.1.2
-description:
-    Scaffold a custom Magento 2 indexer + materialized view (mview) on an existing
-    module — `indexer.xml`, `mview.xml` subscriptions, an `ActionInterface` indexer
-    (executeFull/executeList/executeRow) + Mview `ActionInterface` (execute), delegating
-    to a batched action class. Use for 'add a custom index'. For a new module use
-    `m2-module-create`; to review/diagnose existing indexer performance use
-    `m2-perf-audit`.
+description: >-
+    Scaffold a custom Magento 2 indexer + materialized view (mview) on an existing module — `indexer.xml`, `mview.xml` subscriptions, an `ActionInterface` indexer (executeFull/executeList/executeRow) + Mview `ActionInterface` (execute), delegating to a batched action class. Use for 'add a custom index'. For a new module use `m2-module-create`; to review/diagnose existing indexer performance use `m2-perf-audit`.
 ---
 
 # Magento 2 Indexer / Mview Scaffold

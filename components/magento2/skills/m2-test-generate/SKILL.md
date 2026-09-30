@@ -1,12 +1,8 @@
 ---
 name: m2-test-generate
 version: 1.2.1
-description:
-  Generate tests for an existing Magento 2 module — unit, integration, REST/GraphQL API,
-  JavaScript (Jasmine), or MFTF. Use when a module lacks coverage in any test type, when
-  coverage falls below a target percentage, or when invoked from m2-feature
-  Phase 6. Discovers what tests are missing, asks before generating, then writes tests
-  that pass static checks and contain real assertions.
+description: >-
+    Generate tests for an existing Magento 2 module — unit, integration, REST/GraphQL API, JavaScript (Jasmine), or MFTF. Use when a module lacks coverage in any test type, when coverage falls below a target percentage, or when invoked from m2-feature Phase 6. Discovers what tests are missing, asks before generating, then writes tests that pass static checks and contain real assertions.
 ---
 
 # Magento 2 Test Generate

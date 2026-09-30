@@ -1,5 +1,6 @@
 ---
-description: Deploy Magento 2 module(s) — pre-flight, ordered deploy, rollback (deploy)
+description: >-
+    Deploy Magento 2 module(s) — pre-flight, ordered deploy, rollback (deploy)
 argument-hint: "[--env=local|staging|production] [--validate-only] <modules>…"
 disable-model-invocation: true
 ---

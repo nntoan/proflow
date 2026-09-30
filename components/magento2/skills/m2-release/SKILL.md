@@ -1,12 +1,8 @@
 ---
 name: m2-release
 version: 1.2.1
-description:
-    Release a Magento 2 module — bump version, update CHANGELOG, tag, push, publish.
-    Use when the user wants to cut a release for a module. Detects the next version from
-    conventional commits or accepts an explicit version. Validates before tagging,
-    generates release notes from commits since last tag, and optionally creates a GitHub
-    release.
+description: >-
+    Release a Magento 2 module — bump version, update CHANGELOG, tag, push, publish. Use when the user wants to cut a release for a module. Detects the next version from conventional commits or accepts an explicit version. Validates before tagging, generates release notes from commits since last tag, and optionally creates a GitHub release.
 ---
 
 # Magento 2 Release

@@ -1,16 +1,8 @@
 ---
 name: m2-fix
 version: 1.3.0
-description:
-    End-to-end Magento 2 bug-fix workflow. Use when the user reports a defect, error, crash,
-    exception, unexpected behaviour, or regression in an existing Magento 2 module. Drives:
-    reproduce → root-cause analysis → minimal patch → regression test → review → optional
-    deploy → report. Requires explicit user approval at the RCA gate before any code change.
-    Calls m2-review (diff mode) after the fix and m2-deploy when
-    authorized. Also accepts an already-diagnosed finding from a report via
-    --from-finding=<report.json>#<id>, which pre-fills the diagnosis and lets
-    m2-remediate own the approval gate; m2-triage produces those
-    plans from a m2-audit report.
+description: >-
+    End-to-end Magento 2 bug-fix workflow. Use when the user reports a defect, error, crash, exception, unexpected behaviour, or regression in an existing Magento 2 module. Drives: reproduce → root-cause analysis → minimal patch → regression test → review → optional deploy → report. Requires explicit user approval at the RCA gate before any code change. Calls m2-review (diff mode) after the fix and m2-deploy when authorized. Also accepts an already-diagnosed finding from a report via --from-finding=<report.json>#<id>, which pre-fills the diagnosis and lets m2-remediate own the approval gate; m2-triage produces those plans from a m2-audit report.
 ---
 
 # Magento 2 Bug Fix

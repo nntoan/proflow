@@ -1,5 +1,6 @@
 ---
-description: Release a Magento 2 module — version bump, changelog, tag, publish (release)
+description: >-
+    Release a Magento 2 module — version bump, changelog, tag, publish (release)
 argument-hint: "[--version=X.Y.Z] [--no-publish] [--no-github-release] [--dry-run]"
 disable-model-invocation: true
 ---

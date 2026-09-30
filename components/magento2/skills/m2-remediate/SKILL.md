@@ -1,18 +1,8 @@
 ---
 name: m2-remediate
 version: 1.0.0
-description:
-    Execute an approved remediation plan — the write half of the findings cycle. Consumes the plan
-    m2-triage emits (or an audit document, which it triages inline first), works batch
-    by batch in dependency order, and invokes the skill that owns each finding with that finding's
-    fingerprint and evidence so the diagnosis is never re-derived. One approval per batch, one
-    commit per finding carrying a Closes-Finding trailer, and a closure diff from
-    m2-audit --compare at the end to prove what actually closed. Use when the user asks
-    to fix, remediate, or work through the findings in a report. Never edits vendor/, and a
-    gate: manual item (a leaked credential needs rotation, not a deleted line) is reported as a
-    human action, never executed. For one user-reported bug use m2-fix; to build new
-    behaviour use m2-feature; to find or re-check findings use m2-audit,
-    which stays read-only.
+description: >-
+    Execute an approved remediation plan — the write half of the findings cycle. Consumes the plan m2-triage emits (or an audit document, which it triages inline first), works batch by batch in dependency order, and invokes the skill that owns each finding with that finding's fingerprint and evidence so the diagnosis is never re-derived. One approval per batch, one commit per finding carrying a Closes-Finding trailer, and a closure diff from m2-audit --compare at the end to prove what actually closed. Use when the user asks to fix, remediate, or work through the findings in a report. Never edits vendor/, and a gate: manual item (a leaked credential needs rotation, not a deleted line) is reported as a human action, never executed. For one user-reported bug use m2-fix; to build new behaviour use m2-feature; to find or re-check findings use m2-audit, which stays read-only.
 ---
 
 # Magento 2 Findings Remediation

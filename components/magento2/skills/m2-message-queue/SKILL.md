@@ -1,12 +1,8 @@
 ---
 name: m2-message-queue
 version: 1.1.3
-description:
-    Scaffold a full async message-queue surface on an existing module — communication.xml
-    topic, queue_topology/publisher/consumer.xml bindings, a typed message DTO, a publisher,
-    and an idempotent consumer/handler. Use for 'process X asynchronously' / 'add a queue
-    consumer'. Goes beyond m2-module-create's queue stub. For a new module use
-    `m2-module-create` first.
+description: >-
+    Scaffold a full async message-queue surface on an existing module — communication.xml topic, queue_topology/publisher/consumer.xml bindings, a typed message DTO, a publisher, and an idempotent consumer/handler. Use for 'process X asynchronously' / 'add a queue consumer'. Goes beyond m2-module-create's queue stub. For a new module use `m2-module-create` first.
 ---
 
 # Magento 2 Message Queue

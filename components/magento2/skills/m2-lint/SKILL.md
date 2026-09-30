@@ -1,12 +1,8 @@
 ---
 name: m2-lint
 version: 1.4.1
-description:
-    Run the project's full static-analysis gate (phpcs Magento2, phpstan, phpmd,
-    php-cs-fixer, rector dry-run) over a module or diff and apply safe auto-fixes to
-    green, listing manual-only violations as ranked findings (Markdown + JSON + SARIF).
-    Use for 'fix coding-standard violations' / 'make this pass CI'. For an
-    architecture/quality review WITHOUT fixing, use `m2-review`.
+description: >-
+    Run the project's full static-analysis gate (phpcs Magento2, phpstan, phpmd, php-cs-fixer, rector dry-run) over a module or diff and apply safe auto-fixes to green, listing manual-only violations as ranked findings (Markdown + JSON + SARIF). Use for 'fix coding-standard violations' / 'make this pass CI'. For an architecture/quality review WITHOUT fixing, use `m2-review`.
 ---
 
 # Magento 2 Static Analysis

@@ -1,12 +1,8 @@
 ---
 name: m2-cli-command
 version: 1.1.2
-description:
-    Scaffold a `bin/magento` console command (Symfony Command + commandList registration +
-    arguments/options/exit-codes) or a cron job (crontab.xml + job class, fixed or
-    config-path schedule) on an existing module. Use for 'add a CLI command' / 'add a
-    scheduled job'. Business logic belongs in a service the command/job calls. For a new
-    module use `m2-module-create` first.
+description: >-
+    Scaffold a `bin/magento` console command (Symfony Command + commandList registration + arguments/options/exit-codes) or a cron job (crontab.xml + job class, fixed or config-path schedule) on an existing module. Use for 'add a CLI command' / 'add a scheduled job'. Business logic belongs in a service the command/job calls. For a new module use `m2-module-create` first.
 ---
 
 # Magento 2 CLI Command / Cron Job

@@ -1,16 +1,8 @@
 ---
 name: m2-widget
 version: 1.0.0
-description:
-    Scaffold a Magento 2 CMS widget on an existing module — the `etc/widget.xml` declaration
-    (parameters, containers, templates), the `Magento_Widget` module sequence, a
-    `BlockInterface` block with typed parameter accessors and a parameter-aware cache key,
-    a theme-neutral `.phtml` template, and unit + integration tests. Use for 'add a widget',
-    'create a widget.xml', 'make X insertable from Content → Widgets, the WYSIWYG editor,
-    or a widget directive in CMS content'. NOT for jQuery-UI `$.widget` / Breeze JS
-    widgets — that is frontend JS work: use m2-frontend (RequireJS / Knockout /
-    Alpine) or m2-breeze-adapt. For a new module use
-    m2-module-create first.
+description: >-
+    Scaffold a Magento 2 CMS widget on an existing module — the `etc/widget.xml` declaration (parameters, containers, templates), the `Magento_Widget` module sequence, a `BlockInterface` block with typed parameter accessors and a parameter-aware cache key, a theme-neutral `.phtml` template, and unit + integration tests. Use for 'add a widget', 'create a widget.xml', 'make X insertable from Content → Widgets, the WYSIWYG editor, or a widget directive in CMS content'. NOT for jQuery-UI `$.widget` / Breeze JS widgets — that is frontend JS work: use m2-frontend (RequireJS / Knockout / Alpine) or m2-breeze-adapt. For a new module use m2-module-create first.
 ---
 
 # Magento 2 CMS Widget Scaffold

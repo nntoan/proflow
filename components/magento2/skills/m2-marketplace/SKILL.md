@@ -1,13 +1,8 @@
 ---
 name: m2-marketplace
 version: 1.1.0
-description:
-    Assess an existing Magento 2 module's readiness for Adobe Marketplace / EQP submission
-    — composer metadata completeness, license headers, MFTF test presence,
-    version-constraint sanity, support docs, packaging, and EQP static rules — and emit a
-    tiered, scored readiness report (Markdown + JSON + SARIF). Read-only. For the deep
-    CVE/secret/EQP security scan use `m2-security`; to actually version/tag/publish
-    a release use `m2-release`.
+description: >-
+    Assess an existing Magento 2 module's readiness for Adobe Marketplace / EQP submission — composer metadata completeness, license headers, MFTF test presence, version-constraint sanity, support docs, packaging, and EQP static rules — and emit a tiered, scored readiness report (Markdown + JSON + SARIF). Read-only. For the deep CVE/secret/EQP security scan use `m2-security`; to actually version/tag/publish a release use `m2-release`.
 ---
 
 # Magento 2 Marketplace Prep

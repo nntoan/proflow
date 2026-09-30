@@ -1,5 +1,6 @@
 ---
-description: Reproduce → root-cause → minimal TDD fix → regression test → review (fix)
+description: >-
+    Reproduce → root-cause → minimal TDD fix → regression test → review (fix)
 argument-hint: "\"<bug description>\" [--module=…] [--log=…] [--severity=…] [--agents|--inline]"
 disable-model-invocation: true
 ---

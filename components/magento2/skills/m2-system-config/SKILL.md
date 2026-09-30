@@ -1,12 +1,8 @@
 ---
 name: m2-system-config
 version: 1.1.3
-description:
-    Add admin store configuration to an existing module — system.xml section/group/field,
-    config.xml defaults, ACL, optional source/backend models, plus a typed Config reader
-    (ScopeConfigInterface wrapper with store-aware getters). Use for 'add a config
-    field/toggle/API-key setting' in Stores → Configuration. For an admin **data** edit
-    form use `m2-admin-form`; for a new module use `m2-module-create`.
+description: >-
+    Add admin store configuration to an existing module — system.xml section/group/field, config.xml defaults, ACL, optional source/backend models, plus a typed Config reader (ScopeConfigInterface wrapper with store-aware getters). Use for 'add a config field/toggle/API-key setting' in Stores → Configuration. For an admin **data** edit form use `m2-admin-form`; for a new module use `m2-module-create`.
 ---
 
 # Magento 2 System Config
