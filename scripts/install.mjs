@@ -10,10 +10,12 @@
 // What `install` does, under the target scope's `.commandcode/`:
 //   mods/proflow/   the mod package (dir-manifest auto-discovery — no settings edit)
 //   skills/<name>/  the 25 agent-skills, so /skills and /skill:<name> work natively
-//   agents/*.md     the 4 personas, so the `agent` tool can name them
+//   agents/*.md     the personas, so the `agent` tool can name them
+//   --mcp <name>    merges a known MCP server into the scope's mcp.json (e.g. codegraph)
 // It records what it wrote in `proflow.manifest.json` so uninstall removes only
 // proflow's files, and re-install never clobbers a foreign skill of the same name.
 
+import {spawnSync} from 'node:child_process';
 import {cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {basename, dirname, join, resolve} from 'node:path';
@@ -34,6 +36,10 @@ const PAYLOAD = [
 	'LICENSE.agent-skills',
 	'VENDOR.json',
 ];
+// MCP servers the installer can bundle with `--mcp <name>`.
+const MCP_PRESETS = {
+	codegraph: {transport: 'stdio', command: 'codegraph', args: ['serve', '--mcp']},
+};
 const A = {reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m'};
 
 const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'));
@@ -57,7 +63,7 @@ function findProjectRoot(start) {
 }
 
 function parseArgs(argv) {
-	const opts = {scope: 'project', force: false, dryRun: false, skills: true, agents: true, commands: false};
+	const opts = {scope: 'project', force: false, dryRun: false, skills: true, agents: true, commands: false, mcp: []};
 	for (let i = 0; i < argv.length; i += 1) {
 		const arg = argv[i];
 		if (arg === '--global' || arg === '-g') opts.scope = 'global';
@@ -66,9 +72,13 @@ function parseArgs(argv) {
 		else if (arg === '--no-skills') opts.skills = false;
 		else if (arg === '--no-agents') opts.agents = false;
 		else if (arg === '--commands') opts.commands = true;
+		else if (arg === '--mcp') opts.mcp.push(argv[++i]);
 		else if (arg === '--project' || arg === '--dir') opts.project = argv[++i];
 		else if (arg === '--help' || arg === '-h') opts.help = true;
 		else fail(`unknown option: ${arg}`);
+	}
+	for (const name of opts.mcp) {
+		if (!MCP_PRESETS[name]) fail(`unknown MCP preset "${name}" (known: ${Object.keys(MCP_PRESETS).join(', ')})`);
 	}
 	return opts;
 }
@@ -149,6 +159,9 @@ function install(opts) {
 			})
 		: [];
 
+	// 4. Optional MCP servers (e.g. codegraph), merged into the scope's mcp.json.
+	const mcp = opts.mcp.length > 0 ? installMcp({opts, ccDir}) : {file: null, servers: []};
+
 	if (!opts.dryRun) {
 		writeFileSync(
 			join(ccDir, MANIFEST),
@@ -162,6 +175,7 @@ function install(opts) {
 					skills,
 					agents,
 					commands,
+					mcp,
 				},
 				null,
 				2,
@@ -178,6 +192,7 @@ function install(opts) {
 	info(`  commands  /spec /to-plan /build /test /to-review /ship (via the mod)`);
 	if (opts.skills) info(`  skills    ${skills.length} → ${join(ccDir, 'skills')}`);
 	if (opts.agents) info(`  agents    ${agents.length} → ${join(ccDir, 'agents')}`);
+	if (mcp.servers.length) info(`  mcp       ${mcp.servers.join(', ')} → ${mcp.file}`);
 	if (!opts.dryRun) {
 		info(`\nNext: restart Command Code (or run /reload), then check ${A.dim}cmd mods list${A.reset} and /proflow.`);
 	}
@@ -202,6 +217,72 @@ function placeAll({srcDir, destDir, owned, keep, opts, label, stripExt = false})
 	return placed;
 }
 
+function mcpFileFor(opts, ccDir) {
+	// project scope → <projectRoot>/.mcp.json (shared, committed)
+	// global scope  → ~/.commandcode/mcp.json (user scope)
+	return opts.scope === 'global' ? join(ccDir, 'mcp.json') : join(dirname(ccDir), '.mcp.json');
+}
+
+function onPath(command) {
+	const finder = process.platform === 'win32' ? 'where' : 'which';
+	try {
+		return spawnSync(finder, [command], {stdio: 'ignore'}).status === 0;
+	} catch {
+		return false;
+	}
+}
+
+function installMcp({opts, ccDir}) {
+	const file = mcpFileFor(opts, ccDir);
+	let config = {};
+	if (existsSync(file)) {
+		try {
+			config = JSON.parse(readFileSync(file, 'utf8'));
+		} catch {
+			warn(`could not parse ${file} — leaving it untouched`);
+			return {file: null, servers: []};
+		}
+	}
+	config.mcpServers = config.mcpServers ?? {};
+
+	const servers = [];
+	for (const name of opts.mcp) {
+		const preset = MCP_PRESETS[name];
+		const existing = config.mcpServers[name];
+		if (existing && JSON.stringify(existing) === JSON.stringify(preset)) {
+			warn(`mcp "${name}" is already configured in ${file} — leaving it as is`);
+			continue; // not ours to remove on uninstall
+		}
+		if (existing && !opts.force) {
+			warn(`mcp "${name}" exists in ${file} with a different config — skipping (use --force)`);
+			continue;
+		}
+		config.mcpServers[name] = preset;
+		servers.push(name);
+		if (preset.command && !onPath(preset.command)) {
+			warn(`"${preset.command}" is not on PATH — the ${name} server will not start until it is installed`);
+		}
+	}
+	if (servers.length > 0 && !opts.dryRun) {
+		mkdirSync(dirname(file), {recursive: true});
+		writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
+		ok(`mcp      ${servers.join(', ')} → ${file}`);
+	}
+	return {file, servers};
+}
+
+function removeMcp(mcp, opts) {
+	if (!mcp?.file || !mcp.servers?.length) return;
+	try {
+		const config = JSON.parse(readFileSync(mcp.file, 'utf8'));
+		for (const name of mcp.servers) delete config.mcpServers?.[name];
+		if (opts.dryRun) return info(`  remove mcp ${mcp.servers.join(', ')} from ${mcp.file}`);
+		writeFileSync(mcp.file, `${JSON.stringify(config, null, 2)}\n`);
+	} catch {
+		// Missing or unreadable — nothing to undo.
+	}
+}
+
 function uninstall(opts) {
 	const ccDir = ccDirFor(opts);
 	const manifest = readManifest(ccDir);
@@ -217,6 +298,7 @@ function uninstall(opts) {
 	for (const name of manifest.skills ?? []) remove(join(ccDir, 'skills', name));
 	for (const name of manifest.agents ?? []) remove(join(ccDir, 'agents', `${name}.md`));
 	for (const name of manifest.commands ?? []) remove(join(ccDir, 'commands', `${name}.md`));
+	removeMcp(manifest.mcp, opts);
 	if (!opts.dryRun) rmSync(join(ccDir, MANIFEST), {force: true});
 	pruneEmpty([join(ccDir, 'mods'), join(ccDir, 'skills'), join(ccDir, 'agents'), join(ccDir, 'commands')]);
 	ok(`proflow uninstalled from ${ccDir}`);
@@ -241,6 +323,7 @@ function status(opts) {
 	info(`  skills   ${manifest.skills?.length ?? 0}`);
 	info(`  agents   ${manifest.agents?.length ?? 0}`);
 	info(`  commands ${manifest.commands?.length ?? 0}${manifest.commands?.length ? '' : ' (provided by the mod)'}`);
+	if (manifest.mcp?.servers?.length) info(`  mcp      ${manifest.mcp.servers.join(', ')} → ${manifest.mcp.file}`);
 	info(`  since    ${manifest.installedAt}`);
 }
 
@@ -252,7 +335,7 @@ if (opts.help || command === 'help') {
 	info(`proflow — install the mod and its native skills/agents
   (run as \`npx @nntoan/proflow <command>\` or the installed \`proflow\` bin)
 
-  proflow install   [--global] [--force] [--dry-run] [--no-skills] [--no-agents] [--commands]
+  proflow install   [--global] [--force] [--dry-run] [--no-skills] [--no-agents] [--commands] [--mcp codegraph]
   proflow uninstall [--global] [--dry-run]
   proflow status    [--global]`);
 } else if (command === 'install') {

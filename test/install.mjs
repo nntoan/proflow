@@ -35,10 +35,11 @@ check('install provisions mod, skills, agents, and a manifest', () => {
 	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'commands', 'spec.md')));
 	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'skills', 'test-driven-development', 'SKILL.md')));
 	assert.equal(readdirSync(join(cc, 'skills')).length, 25);
-	assert.equal(readdirSync(join(cc, 'agents')).length, 4);
+	assert.equal(readdirSync(join(cc, 'agents')).length, 5);
 	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 	assert.equal(manifest.version, pkg.version);
 	assert.equal(manifest.skills.length, 25);
+	assert.ok(manifest.agents.includes('spec-reviewer'));
 });
 
 check('install is idempotent and re-runs cleanly', () => {
@@ -79,6 +80,17 @@ check('uninstall removes proflow files and leaves foreign ones', () => {
 check('status reflects an uninstalled scope', () => {
 	const out = run('status');
 	assert.match(out, /not installed/i);
+});
+
+check('--mcp bundles an MCP server and uninstall removes it', () => {
+	run('install', '--mcp', 'codegraph');
+	const mcpFile = join(proj, '.mcp.json');
+	assert.ok(existsSync(mcpFile), '.mcp.json must be written');
+	assert.equal(JSON.parse(readFileSync(mcpFile, 'utf8')).mcpServers.codegraph.command, 'codegraph');
+	assert.deepEqual(JSON.parse(readFileSync(manifestPath, 'utf8')).mcp.servers, ['codegraph']);
+
+	run('uninstall');
+	assert.ok(!JSON.parse(readFileSync(mcpFile, 'utf8')).mcpServers?.codegraph, 'codegraph must be removed');
 });
 
 rmSync(proj, {recursive: true, force: true});
