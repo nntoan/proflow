@@ -65,8 +65,8 @@ const check = (name, fn) => {
 	checks.push(name);
 };
 
-check('registers the six lifecycle commands', () => {
-	for (const name of ['spec', 'to-plan', 'build', 'test', 'to-review', 'ship']) {
+check('registers the lifecycle commands', () => {
+	for (const name of ['idea', 'spec', 'to-plan', 'build', 'test', 'to-review', 'ship']) {
 		assert.ok(commands.has(name), `missing /${name}`);
 	}
 });
@@ -74,7 +74,7 @@ check('registers the six lifecycle commands', () => {
 check('commands have descriptions and argument hints', () => {
 	assert.match(commands.get('spec').description, /spec/i);
 	assert.equal(commands.get('build').argumentHint, '[auto]');
-	assert.equal(commands.get('spec').argumentHint, '<goal>');
+	assert.equal(commands.get('spec').argumentHint, '<goal | ticket | version>');
 });
 
 check('registers the agent_skills tool as read-only', () => {
@@ -129,6 +129,28 @@ check('agent_skills reports unknown names instead of throwing', () => {
 	const badAction = run({action: 'bogus'});
 	assert.equal(badAction.ok, false);
 	assert.match(badAction.error, /Unknown action/);
+});
+
+check('ships the spec-reviewer persona and the /idea command', () => {
+	const persona = run({action: 'persona', name: 'spec-reviewer'});
+	assert.equal(persona.ok, true);
+	assert.match(persona.content[0].text, /Spec Reviewer/);
+
+	const idea = commands.get('idea').handler({args: 'offline notes', cwd: ROOT});
+	assert.match(idea.prompt, /idea-refine/);
+	assert.match(idea.prompt, /ARGUMENTS: offline notes/);
+});
+
+check('/spec recons, reflects with spec-reviewer, and gates on approval', () => {
+	const spec = commands.get('spec').handler({args: 'PROJ-7 SSO', cwd: ROOT});
+	assert.match(spec.prompt, /docs\/spec\/<id>\/SPEC\.md/);
+	assert.match(spec.prompt, /explore-brief\.md/);
+	assert.match(spec.prompt, /review-log\.md/);
+	assert.match(spec.prompt, /subagent_type: "explore"/);
+	assert.match(spec.prompt, /spec-reviewer/);
+	assert.match(spec.prompt, /ask_user_question/);
+	assert.match(spec.prompt, /ARGUMENTS: PROJ-7 SSO/);
+	assert.doesNotMatch(spec.prompt, /top-level `SPEC\.md` is accepted/);
 });
 
 check('lifecycle commands return their workflow and template arguments', () => {
@@ -238,6 +260,8 @@ check('the catalog hook is byte-stable and lists skills', () => {
 	assert.equal(first, second, 'catalog must be byte-stable');
 	assert.match(first, /agent_skills/);
 	assert.match(first, /shipping-and-launch/);
+	assert.match(first, /\/idea/);
+	assert.match(first, /docs\/spec\//);
 });
 
 check('the catalog lists every bundled skill', () => {
