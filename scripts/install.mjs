@@ -40,6 +40,8 @@ const PAYLOAD = [
 const MCP_PRESETS = {
 	codegraph: {transport: 'stdio', command: 'codegraph', args: ['serve', '--mcp']},
 };
+// Optional components, vendored under components/<name>/ (extra skills, commands, agents, hooks).
+const COMPONENTS = ['magento2'];
 const A = {reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m'};
 
 const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'));
@@ -63,7 +65,7 @@ function findProjectRoot(start) {
 }
 
 function parseArgs(argv) {
-	const opts = {scope: 'project', force: false, dryRun: false, skills: true, agents: true, commands: false, mcp: []};
+	const opts = {scope: 'project', force: false, dryRun: false, skills: true, agents: true, commands: false, hooks: true, mcp: [], components: []};
 	for (let i = 0; i < argv.length; i += 1) {
 		const arg = argv[i];
 		if (arg === '--global' || arg === '-g') opts.scope = 'global';
@@ -73,12 +75,18 @@ function parseArgs(argv) {
 		else if (arg === '--no-agents') opts.agents = false;
 		else if (arg === '--commands') opts.commands = true;
 		else if (arg === '--mcp') opts.mcp.push(argv[++i]);
+		else if (arg === '--component') opts.components.push(argv[++i]);
+		else if (arg === '--magento2') opts.components.push('magento2');
+		else if (arg === '--no-hooks') opts.hooks = false;
 		else if (arg === '--project' || arg === '--dir') opts.project = argv[++i];
 		else if (arg === '--help' || arg === '-h') opts.help = true;
 		else fail(`unknown option: ${arg}`);
 	}
 	for (const name of opts.mcp) {
 		if (!MCP_PRESETS[name]) fail(`unknown MCP preset "${name}" (known: ${Object.keys(MCP_PRESETS).join(', ')})`);
+	}
+	for (const name of opts.components) {
+		if (!COMPONENTS.includes(name)) fail(`unknown component "${name}" (known: ${COMPONENTS.join(', ')})`);
 	}
 	return opts;
 }
@@ -162,6 +170,22 @@ function install(opts) {
 	// 4. Optional MCP servers (e.g. codegraph), merged into the scope's mcp.json.
 	const mcp = opts.mcp.length > 0 ? installMcp({opts, ccDir}) : {file: null, servers: []};
 
+	// 5. Optional components (e.g. magento2): extra skills, commands, agents, and hooks.
+	const components = {};
+	for (const name of opts.components) {
+		if (name === 'magento2') {
+			components.magento2 = installMagento2({
+				opts,
+				ccDir,
+				owned: {
+					skills: new Set(prev?.components?.magento2?.skills ?? []),
+					commands: new Set(prev?.components?.magento2?.commands ?? []),
+					agents: new Set(prev?.components?.magento2?.agents ?? []),
+				},
+			});
+		}
+	}
+
 	if (!opts.dryRun) {
 		writeFileSync(
 			join(ccDir, MANIFEST),
@@ -176,6 +200,7 @@ function install(opts) {
 					agents,
 					commands,
 					mcp,
+					components,
 				},
 				null,
 				2,
@@ -193,6 +218,10 @@ function install(opts) {
 	if (opts.skills) info(`  skills    ${skills.length} → ${join(ccDir, 'skills')}`);
 	if (opts.agents) info(`  agents    ${agents.length} → ${join(ccDir, 'agents')}`);
 	if (mcp.servers.length) info(`  mcp       ${mcp.servers.join(', ')} → ${mcp.file}`);
+	if (components.magento2) {
+		const c = components.magento2;
+		info(`  magento2  ${c.skills.length} skills · ${c.commands.length} commands · ${c.agents.length} agents · ${c.hooks.length} hook(s)`);
+	}
 	if (!opts.dryRun) {
 		info(`\nNext: restart Command Code (or run /reload), then check ${A.dim}cmd mods list${A.reset} and /proflow.`);
 	}
@@ -283,6 +312,99 @@ function removeMcp(mcp, opts) {
 	}
 }
 
+function installMagento2({opts, ccDir, owned}) {
+	const src = join(PKG_ROOT, 'components', 'magento2');
+	if (!existsSync(src)) {
+		warn('magento2 component is not vendored — run `node scripts/sync-magento2.mjs` first');
+		return {skills: [], commands: [], agents: [], hooks: []};
+	}
+	const skills = placeAll({
+		srcDir: join(src, 'skills'),
+		destDir: join(ccDir, 'skills'),
+		owned: owned.skills,
+		keep: name => existsSync(join(src, 'skills', name, 'SKILL.md')),
+		opts,
+		label: 'skill',
+	});
+	const commands = placeAll({
+		srcDir: join(src, 'commands'),
+		destDir: join(ccDir, 'commands'),
+		owned: owned.commands,
+		keep: name => name.endsWith('.md'),
+		opts,
+		label: 'command',
+		stripExt: true,
+	});
+	const agents = placeAll({
+		srcDir: join(src, 'agents'),
+		destDir: join(ccDir, 'agents'),
+		owned: owned.agents,
+		keep: name => name.endsWith('.md'),
+		opts,
+		label: 'agent',
+		stripExt: true,
+	});
+	const hooks = opts.hooks ? installMagento2Hooks({opts, ccDir}) : [];
+	return {skills, commands, agents, hooks};
+}
+
+function installMagento2Hooks({opts, ccDir}) {
+	const srcDir = join(PKG_ROOT, 'components', 'magento2', 'hooks');
+	const destDir = join(ccDir, 'hooks', 'm2');
+	if (!existsSync(srcDir)) return [];
+	const files = readdirSync(srcDir).filter(file => file.endsWith('.sh'));
+	for (const file of files) copyInto(join(srcDir, file), join(destDir, file), opts);
+	if (!opts.dryRun) ok(`hooks    ${files.length} → ${destDir}`);
+
+	// Project hooks run from the project root; global hooks need an absolute path.
+	const guard =
+		opts.scope === 'global'
+			? join(destDir, 'guard-docs-path.sh')
+			: './.commandcode/hooks/m2/guard-docs-path.sh';
+	const command = `bash ${guard}`;
+	if (!opts.dryRun) mergeHook(join(ccDir, 'settings.json'), {matcher: 'write|edit', hooks: [{type: 'command', command, timeout: 10}]});
+	return [command];
+}
+
+function mergeHook(file, entry) {
+	let settings = {};
+	if (existsSync(file)) {
+		try {
+			settings = JSON.parse(readFileSync(file, 'utf8'));
+		} catch {
+			warn(`could not parse ${file} — skipping the magento2 hook`);
+			return;
+		}
+	}
+	settings.hooks = settings.hooks ?? {};
+	settings.hooks.PreToolUse = settings.hooks.PreToolUse ?? [];
+	const command = entry.hooks[0].command;
+	if (settings.hooks.PreToolUse.some(group => (group.hooks ?? []).some(h => h.command === command))) return;
+	settings.hooks.PreToolUse.push(entry);
+	mkdirSync(dirname(file), {recursive: true});
+	writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+}
+
+function removeMagento2Hooks(ccDir, commands, opts) {
+	const file = join(ccDir, 'settings.json');
+	if (existsSync(file)) {
+		try {
+			const settings = JSON.parse(readFileSync(file, 'utf8'));
+			if (Array.isArray(settings.hooks?.PreToolUse)) {
+				settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter(
+					group => !(group.hooks ?? []).some(h => commands.includes(h.command)),
+				);
+				if (settings.hooks.PreToolUse.length === 0) delete settings.hooks.PreToolUse;
+				if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+				if (!opts.dryRun) writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+			}
+		} catch {
+			// unparseable settings: leave them alone
+		}
+	}
+	rmSync(join(ccDir, 'hooks', 'm2'), {recursive: true, force: true});
+}
+
 function uninstall(opts) {
 	const ccDir = ccDirFor(opts);
 	const manifest = readManifest(ccDir);
@@ -298,16 +420,25 @@ function uninstall(opts) {
 	for (const name of manifest.skills ?? []) remove(join(ccDir, 'skills', name));
 	for (const name of manifest.agents ?? []) remove(join(ccDir, 'agents', `${name}.md`));
 	for (const name of manifest.commands ?? []) remove(join(ccDir, 'commands', `${name}.md`));
+	const magento = manifest.components?.magento2;
+	if (magento) {
+		for (const name of magento.skills ?? []) remove(join(ccDir, 'skills', name));
+		for (const name of magento.commands ?? []) remove(join(ccDir, 'commands', `${name}.md`));
+		for (const name of magento.agents ?? []) remove(join(ccDir, 'agents', `${name}.md`));
+		removeMagento2Hooks(ccDir, magento.hooks ?? [], opts);
+	}
 	removeMcp(manifest.mcp, opts);
 	if (!opts.dryRun) rmSync(join(ccDir, MANIFEST), {force: true});
-	pruneEmpty([join(ccDir, 'mods'), join(ccDir, 'skills'), join(ccDir, 'agents'), join(ccDir, 'commands')]);
+	pruneEmpty([join(ccDir, 'mods'), join(ccDir, 'skills'), join(ccDir, 'agents'), join(ccDir, 'commands'), join(ccDir, 'hooks')]);
 	ok(`proflow uninstalled from ${ccDir}`);
 }
 
 function pruneEmpty(dirs) {
 	for (const dir of dirs) {
 		try {
-			if (existsSync(dir) && statSync(dir).isDirectory() && readdirSync(dir).length === 0) rmSync(dir);
+			if (existsSync(dir) && statSync(dir).isDirectory() && readdirSync(dir).length === 0) {
+				rmSync(dir, {recursive: true, force: true});
+			}
 		} catch {
 			// best effort
 		}
@@ -324,6 +455,10 @@ function status(opts) {
 	info(`  agents   ${manifest.agents?.length ?? 0}`);
 	info(`  commands ${manifest.commands?.length ?? 0}${manifest.commands?.length ? '' : ' (provided by the mod)'}`);
 	if (manifest.mcp?.servers?.length) info(`  mcp      ${manifest.mcp.servers.join(', ')} → ${manifest.mcp.file}`);
+	if (manifest.components?.magento2) {
+		const c = manifest.components.magento2;
+		info(`  magento2 ${c.skills?.length ?? 0} skills, ${c.commands?.length ?? 0} commands, ${c.agents?.length ?? 0} agents`);
+	}
 	info(`  since    ${manifest.installedAt}`);
 }
 
@@ -335,7 +470,7 @@ if (opts.help || command === 'help') {
 	info(`proflow — install the mod and its native skills/agents
   (run as \`npx @nntoan/proflow <command>\` or the installed \`proflow\` bin)
 
-  proflow install   [--global] [--force] [--dry-run] [--no-skills] [--no-agents] [--commands] [--mcp codegraph]
+  proflow install   [--global] [--force] [--dry-run] [--no-skills] [--no-agents] [--commands] [--mcp codegraph] [--component magento2] [--no-hooks]
   proflow uninstall [--global] [--dry-run]
   proflow status    [--global]`);
 } else if (command === 'install') {

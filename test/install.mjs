@@ -93,6 +93,29 @@ check('--mcp bundles an MCP server and uninstall removes it', () => {
 	assert.ok(!JSON.parse(readFileSync(mcpFile, 'utf8')).mcpServers?.codegraph, 'codegraph must be removed');
 });
 
+check('--component magento2 installs its skills, commands, agents, and hook', () => {
+	run('install', '--component', 'magento2');
+	const skills = readdirSync(join(cc, 'skills'));
+	assert.ok(skills.includes('m2-fix'), 'm2-fix skill missing');
+	assert.equal(skills.filter(name => name.startsWith('m2-')).length, 36);
+	assert.equal(readdirSync(join(cc, 'commands')).filter(n => n.startsWith('m2-')).length, 18);
+	assert.ok(existsSync(join(cc, 'agents', 'reviewer.md')));
+	assert.ok(existsSync(join(cc, 'hooks', 'm2', 'guard-docs-path.sh')));
+
+	const settings = JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8'));
+	assert.ok(
+		settings.hooks.PreToolUse.some(g => (g.hooks ?? []).some(h => /guard-docs-path\.sh/.test(h.command))),
+		'the guard hook must be wired into settings.json',
+	);
+	assert.equal(JSON.parse(readFileSync(manifestPath, 'utf8')).components.magento2.skills.length, 36);
+
+	run('uninstall');
+	assert.ok(!existsSync(join(cc, 'skills', 'm2-fix')));
+	assert.ok(!existsSync(join(cc, 'hooks')), 'the hook dir must be removed');
+	const after = existsSync(join(cc, 'settings.json')) ? JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8')) : {};
+	assert.ok(!after.hooks, 'the hook entry must be removed from settings.json');
+});
+
 rmSync(proj, {recursive: true, force: true});
 
 console.log(`\n✓ proflow installer test — ${checks.length} checks passed\n`);
