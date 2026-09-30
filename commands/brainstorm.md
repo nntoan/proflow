@@ -8,7 +8,7 @@ argument-hint: "<rough idea>"
 `{"action":"load","name":"interview-me"}`, and follow them. If the pack is installed as native
 Command Code skills, load them with `activate_skill` instead.
 
-Use `/idea` when the intent is still fuzzy — a greenfield project, a "wouldn't it be nice if…", or a
+Use `/brainstorm` when the intent is still fuzzy — a greenfield project, a "wouldn't it be nice if…", or a
 direction with several plausible shapes. It produces a one-page concept, not a specification. When
 the concept is concrete, hand off to `/spec`.
 
@@ -19,8 +19,10 @@ they run in parallel** — two or three focused calls beat one broad one:
 
 1. **Codebase / constraints** — `agent` with `subagent_type: "explore"`, when there is an existing
    repo: what already exists, what this idea would collide with or extend, non-negotiable
-   constraints. If CodeGraph is available (`.codegraph/` exists or `mcp__codegraph__*` tools are
-   listed), use it before grep.
+   constraints. Prefer CodeGraph when the repo has a `.codegraph/` directory: run
+   `codegraph explore "<question>"` via the shell before grep/glob/read — one call returns the
+   relevant symbols and call paths, and the shell form works even in plan mode (where the CodeGraph
+   MCP tool is hidden).
 2. **Prior art** — `agent` with `subagent_type: "general"`: who already does this, how, and what
    users complain about.
 3. **Approach options** — `agent` with `subagent_type: "general"`: two or three genuinely different
@@ -47,4 +49,4 @@ questions**. Keep it to one page.
 
 Tell the user the concept is ready and offer `/spec <idea>` to turn it into a specification
 (`/spec` will reuse this directory and its `IDEA.md` as input). Stop here — do not write a spec or
-any code from `/idea`.
+any code from `/brainstorm`.

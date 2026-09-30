@@ -272,7 +272,7 @@ function buildCatalog(): string {
 	const lines: string[] = [];
 	lines.push(
 		`proflow · agent-skills is loaded (${SKILLS.length} skills). Lifecycle commands: ` +
-			'/idea <idea> · /spec <goal> · /to-plan <goal> · /build [auto] · /test [scope] · /to-review [scope] · /ship [scope].',
+			'/brainstorm <idea> · /spec <goal> · /to-plan <goal> · /build [auto] · /test [scope] · /to-review [scope] · /ship [scope].',
 	);
 	lines.push(
 		'A spec lives in its own directory, docs/spec/<id>/ (SPEC.md + explore-brief.md + review-log.md) — ' +
@@ -319,7 +319,7 @@ export default function (cmd: ModApi): void {
 	// Lifecycle commands. Each prompt is the workflow Markdown in commands/*.md,
 	// with the user's argument appended the way native custom commands do.
 	const COMMANDS: {name: string; file: string}[] = [
-		{name: 'idea', file: 'idea.md'},
+		{name: 'brainstorm', file: 'brainstorm.md'},
 		{name: 'spec', file: 'spec.md'},
 		{name: 'to-plan', file: 'to-plan.md'},
 		{name: 'build', file: 'build.md'},

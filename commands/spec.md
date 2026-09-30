@@ -44,9 +44,7 @@ several subagent calls in a single assistant turn so they run in parallel:**
 2. **Prior-art / external research** — `agent` with `subagent_type: "general"`: how comparable
    products solve this, standard approaches, libraries or standards worth adopting, known pitfalls.
 
-If CodeGraph is available — a `.codegraph/` directory exists, or `mcp__codegraph__*` tools are
-listed — **use it before grep/read** for the codebase scout; `codegraph_explore` returns the relevant
-symbols and call paths in one call. Hand the scout that instruction.
+If CodeGraph is available — a `.codegraph/` directory exists — **run `codegraph explore "<question>"` via the shell before grep/read** for the codebase scout; it returns the relevant symbols and call paths in one call. Use the shell form (not the MCP tool): the CodeGraph MCP tool is hidden in plan mode, and hooks are skipped there too, so the CLI is the only route that works while planning. Hand the scout that instruction.
 
 Synthesize the results into `docs/spec/<id>/explore-brief.md` (create the directory), with these
 sections: **What exists today**, **Constraints discovered**, **Prior art**, **Assumptions we are
@@ -81,7 +79,12 @@ Questions**. Reframe vague goals as measurable success criteria rather than acce
 
 ## Phase 4 — Reflection loop (the spec-reviewer)
 
-A spec is not done when it is written; it is done when it survives review. Loop:
+A spec is not done when it is written; it is done when it survives review.
+
+**Ask first.** After the draft, use the **`ask_user_question`** tool to ask whether to bring the
+`spec-reviewer` in (yes / skip). Run the loop only on yes; if the user skips, go straight to Phase 5.
+
+Loop:
 
 1. **Review.** Spawn one `spec-reviewer` subagent against `docs/spec/<id>/`:
    `agent` with `subagent_type: "spec-reviewer"` if the persona is installed, otherwise

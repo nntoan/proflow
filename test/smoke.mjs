@@ -66,7 +66,7 @@ const check = (name, fn) => {
 };
 
 check('registers the lifecycle commands', () => {
-	for (const name of ['idea', 'spec', 'to-plan', 'build', 'test', 'to-review', 'ship']) {
+	for (const name of ['brainstorm', 'spec', 'to-plan', 'build', 'test', 'to-review', 'ship']) {
 		assert.ok(commands.has(name), `missing /${name}`);
 	}
 });
@@ -131,14 +131,14 @@ check('agent_skills reports unknown names instead of throwing', () => {
 	assert.match(badAction.error, /Unknown action/);
 });
 
-check('ships the spec-reviewer persona and the /idea command', () => {
+check('ships the spec-reviewer persona and the /brainstorm command', () => {
 	const persona = run({action: 'persona', name: 'spec-reviewer'});
 	assert.equal(persona.ok, true);
 	assert.match(persona.content[0].text, /Spec Reviewer/);
 
-	const idea = commands.get('idea').handler({args: 'offline notes', cwd: ROOT});
-	assert.match(idea.prompt, /idea-refine/);
-	assert.match(idea.prompt, /ARGUMENTS: offline notes/);
+	const brainstorm = commands.get('brainstorm').handler({args: 'offline notes', cwd: ROOT});
+	assert.match(brainstorm.prompt, /idea-refine/);
+	assert.match(brainstorm.prompt, /ARGUMENTS: offline notes/);
 });
 
 check('/spec recons, reflects with spec-reviewer, and gates on approval', () => {
@@ -149,6 +149,8 @@ check('/spec recons, reflects with spec-reviewer, and gates on approval', () => 
 	assert.match(spec.prompt, /subagent_type: "explore"/);
 	assert.match(spec.prompt, /spec-reviewer/);
 	assert.match(spec.prompt, /ask_user_question/);
+	assert.match(spec.prompt, /Ask first/);
+	assert.match(spec.prompt, /codegraph explore/);
 	assert.match(spec.prompt, /ARGUMENTS: PROJ-7 SSO/);
 	assert.doesNotMatch(spec.prompt, /top-level `SPEC\.md` is accepted/);
 });
@@ -260,7 +262,7 @@ check('the catalog hook is byte-stable and lists skills', () => {
 	assert.equal(first, second, 'catalog must be byte-stable');
 	assert.match(first, /agent_skills/);
 	assert.match(first, /shipping-and-launch/);
-	assert.match(first, /\/idea/);
+	assert.match(first, /\/brainstorm/);
 	assert.match(first, /docs\/spec\//);
 });
 
