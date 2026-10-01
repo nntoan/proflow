@@ -153,6 +153,17 @@ check('--mcp codegraph also wires permissions and the CodeGraph hook', () => {
 	assert.ok(!existsSync(join(cc, 'hooks', 'codegraph')));
 });
 
+check('the CLI defaults to help, reports --version, and never installs bare', () => {
+	const run2 = (...args) => execFileSync(process.execPath, [INSTALLER, ...args], {encoding: 'utf8'});
+	assert.match(run2('--version'), new RegExp(pkg.version.replace(/\./g, '\\.')));
+	assert.match(run2(), /proflow install/); // no subcommand → help, NOT an install
+	assert.match(run2('--help'), /proflow uninstall/);
+	// A bare invocation must not create anything in the cwd.
+	const empty = mkdtempSync(join(tmpdir(), 'proflow-bare-'));
+	execFileSync(process.execPath, [INSTALLER], {cwd: empty, encoding: 'utf8'});
+	assert.deepEqual(readdirSync(empty), [], 'a bare invocation must not touch the cwd');
+});
+
 rmSync(proj, {recursive: true, force: true});
 
 console.log(`\n✓ proflow installer test — ${checks.length} checks passed\n`);

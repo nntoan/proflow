@@ -182,6 +182,7 @@ cannot apply a declared patch **fails loudly** (it never ships stale content); u
 | Provenance error | repo must be public and the workflow needs `id-token: write` |
 | `npm test` fails on Node < 22.13 | upgrade Node (the harness uses `module.stripTypeScriptTypes`) |
 | Installed mod does nothing | check `cmd mods list` for a load warning; the tarball must include `mods/ commands/ skills/ references/ agents/` (§1) |
+| `sh: proflow: command not found` from `npx` | you ran it **inside this package's own checkout** — npx resolves the local package and finds no local `.bin`. Run from the target project, use `node scripts/install.mjs`, or an absolute `npx --yes @nntoan/proflow@<v> <cmd>` from another dir |
 | Skills missing after install | `cmd skills list --debug` — usually YAML in a vendored `SKILL.md`; the sync normalises descriptions, so re-run `npm run sync` |
 
 ---

@@ -1,6 +1,6 @@
 {
 	"name": "@nntoan/proflow",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Command Code mod that deep-integrates addyosmani/agent-skills — 25 engineering skills plus the /brainstorm, /spec, /to-plan, /build, /test, /to-review and /ship lifecycle commands.",
 	"license": "MIT",
 	"type": "commonjs",

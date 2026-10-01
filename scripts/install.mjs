@@ -536,23 +536,30 @@ function status(opts) {
 	info(`  since    ${manifest.installedAt}`);
 }
 
-const argv = process.argv.slice(2);
-// Allow `proflow --help` (no subcommand): treat a leading flag as install's.
-const [command = 'install', ...rest] = argv[0]?.startsWith('-') ? ['install', ...argv] : argv;
-const opts = parseArgs(rest);
-if (opts.help || command === 'help') {
-	info(`proflow — install the mod and its native skills/agents
+function usage() {
+	info(`proflow ${pkg.version} — install the mod and its native skills/agents
   (run as \`npx @nntoan/proflow <command>\` or the installed \`proflow\` bin)
 
   proflow install   [--global] [--force] [--dry-run] [--no-skills] [--no-agents] [--commands] [--mcp codegraph] [--component magento2] [--no-hooks]
   proflow uninstall [--global] [--dry-run]
-  proflow status    [--global]`);
-} else if (command === 'install') {
-	install(opts);
-} else if (command === 'uninstall' || command === 'remove') {
-	uninstall(opts);
-} else if (command === 'status') {
-	status(opts);
+  proflow status    [--global]
+  proflow --version`);
+}
+
+const argv = process.argv.slice(2);
+if (argv.includes('--version') || argv.includes('-v') || argv[0] === 'version') {
+	info(pkg.version);
+} else if (argv.length === 0) {
+	// No subcommand: print help. Never assume `install` — a bare invocation
+	// (`npx @nntoan/proflow`) must not mutate the current directory.
+	usage();
 } else {
-	fail(`unknown command: ${command} (try: install, uninstall, status)`);
+	// A leading flag belongs to `install` (e.g. `proflow --global`).
+	const [command, ...rest] = argv[0].startsWith('-') ? ['install', ...argv] : argv;
+	const opts = parseArgs(rest);
+	if (opts.help || command === 'help') usage();
+	else if (command === 'install') install(opts);
+	else if (command === 'uninstall' || command === 'remove') uninstall(opts);
+	else if (command === 'status') status(opts);
+	else fail(`unknown command: ${command} (try: install, uninstall, status; or --help)`);
 }

@@ -55,6 +55,12 @@ Restart Command Code (or run `/reload`), then `cmd mods list` should show `profl
 `cmd skills list` should show the 25 project skills. A brand-new workspace builds its mod index on
 first contact, so the very first session may not see the mod yet — the next one will.
 
+Run it from the project you want to install into, and pass a subcommand — a bare
+`npx @nntoan/proflow` prints help rather than installing. (Inside this package's own checkout, `npx`
+resolves the local package and can't find its bin, so it reports `sh: proflow: command not found`;
+that's npm's local shadowing, not the package — run from your project, or use
+`node scripts/install.mjs` locally. `npx @nntoan/proflow --version` always works.)
+
 Just want the mod, without the native skills/agents? Use the mod manager instead:
 
 ```bash
