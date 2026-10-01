@@ -17,10 +17,12 @@
 		"access": "public"
 	},
 	"commandcode": {
-		"mods": ["./mods/proflow.ts"]
+		"mods": [
+			"./mods/proflow.ts"
+		]
 	},
 	"bin": {
-		"proflow": "./scripts/install.mjs"
+		"proflow": "scripts/install.mjs"
 	},
 	"files": [
 		"mods/",

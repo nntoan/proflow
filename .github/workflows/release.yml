@@ -36,7 +36,19 @@ jobs:
       - name: Tests
         run: npm test
 
+      - name: Is this version already on npm?
+        id: pub
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          if npm view "@nntoan/proflow@$pkg" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::@nntoan/proflow@$pkg is already published — skipping publish (e.g. a manual first release)."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to npm (provenance)
+        if: steps.pub.outputs.exists == 'false'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

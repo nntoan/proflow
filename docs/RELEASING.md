@@ -76,6 +76,14 @@ gh release create v1.0.0 --generate-notes
 `prepublishOnly` runs `npm test` automatically, so a broken tree cannot be published even if you
 forget §1.
 
+> **A brand-new package's packument is briefly unavailable.** Right after the first publish the
+> registry may 404 on `GET /@nntoan%2fproflow` (so `npm view` and `npm install` fail) even though
+> `/@nntoan/proflow/latest` and the tarball already return 200. This is a CDN cache of the 404 that
+> npm's own pre-publish existence check primed — it clears on its own within a few minutes. Confirm
+> readiness before treating it as a failure:
+> `curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/@nntoan%2fproflow` → `200`.
+> Do **not** republish a new version to "fix" it.
+
 **Verify the publish (see §4).** Do not skip this — a scoped package can publish "successfully" yet
 be uninstallable if `files` is wrong.
 
@@ -166,9 +174,11 @@ cannot apply a declared patch **fails loudly** (it never ships stale content); u
 
 | Symptom | Cause / fix |
 | --- | --- |
+| `npm view`/`npm install` 404 right after the **first** publish | CDN cached the pre-publish 404 → wait a few minutes; `curl .../@nntoan%2fproflow` returning 200 means it is live (§2) |
 | `E403` on publish | not logged in, or no rights to the `@nntoan` scope → `npm login`; confirm scope ownership; keep `--access public` |
 | `EOTP` | 2FA enabled → add `--otp <code>` (or publish via CI with an Automation token) |
-| `E409` / "cannot publish over" | the version exists → bump |
+| `E409` / "cannot publish over" | the version exists → bump; the release workflow already skips when the version is published |
+| `warn publish "bin[proflow]" … was invalid` | npm normalizes a `./`-prefixed bin path; `bin` must be `scripts/install.mjs` (no `./`) — run `npm pkg fix` |
 | Provenance error | repo must be public and the workflow needs `id-token: write` |
 | `npm test` fails on Node < 22.13 | upgrade Node (the harness uses `module.stripTypeScriptTypes`) |
 | Installed mod does nothing | check `cmd mods list` for a load warning; the tarball must include `mods/ commands/ skills/ references/ agents/` (§1) |
