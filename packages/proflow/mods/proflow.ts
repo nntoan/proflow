@@ -41,6 +41,10 @@ interface ModApi {
 		onSessionEnd?: () => void;
 	}): Disposable;
 	on(event: string, handler: (payload: Record<string, unknown>) => void): Disposable;
+	readonly session?: {
+		appendCustomEntry(entry: {customType: string; data?: unknown}): unknown;
+		getCustomEntries(filter: {customType: string}): {data?: unknown}[];
+	};
 	readonly ui: {
 		setStatus(text: string | null): Disposable;
 		notify(message: string): void;
@@ -259,6 +263,59 @@ export const CONTEXT_WINDOWS: Record<string, number> = {
 	'moonshotai/Kimi-K3': 1_000_000,
 };
 
+/**
+ * Per-million rates, quoted from Command Code's own registry
+ * (`command-code-knowledge/reference/models.md`) — the same data the harness's
+ * `getDisplayRates` table is built from. A model that is not listed shows no
+ * cost rather than a wrong one, mirroring the harness: `getDisplayRates` throws
+ * and `estimateSessionCostUsd` swallows it.
+ */
+export const PRICES: Record<
+	string,
+	{input: number; output: number; cacheRead: number; cacheWrite?: number; cacheWrite1h?: number}
+> = {
+	'deepseek/deepseek-v4.1-flash': {input: 0.15, output: 0.6, cacheRead: 0.003},
+	'deepseek/deepseek-v4.1-flash-fast': {input: 0.16, output: 0.58, cacheRead: 0.016},
+	'deepseek/deepseek-v4-flash-fast': {input: 0.28, output: 0.56, cacheRead: 0.07},
+	'deepseek/deepseek-v4-flash-vision-exp': {input: 0.15, output: 0.6, cacheRead: 0.003},
+	'moonshotai/Kimi-K3': {input: 3, output: 15, cacheRead: 0.3},
+};
+
+/**
+ * A copy of the harness's estimator (`estimateSessionCostUsd` in cli.mjs), which
+ * a mod cannot call — it is injected into the session config, not exported. The
+ * formula is theirs verbatim, including the 1-hour cache-write tier:
+ *   uncached = max(0, input - cacheRead - cacheWrite)
+ *   cost = (uncached·input + output·output + cacheRead·cacheRead
+ *           + (cacheWrite - min(cacheWrite1h, cacheWrite))·write
+ *           + min(cacheWrite1h, cacheWrite)·write1h) / 1e6
+ */
+export function estimateCost(
+	model: string | null,
+	usage: Record<string, number>,
+): number | null {
+	const rates = model ? PRICES[model] : undefined;
+	if (!rates) return null;
+	const input = usage.inputTokens ?? 0;
+	const output = usage.outputTokens ?? 0;
+	const read = usage.cacheReadTokens ?? 0;
+	const written = usage.cacheWriteTokens ?? 0;
+	const written1h = usage.cacheWriteTokens1h ?? 0;
+	const uncached = Math.max(0, input - read - written);
+	const oneHour = Math.min(written1h, written);
+	const plain = written - oneHour;
+	const writeCost = rates.cacheWrite ?? 0;
+	const write1hCost = rates.cacheWrite1h ?? writeCost;
+	return (
+		(uncached * rates.input +
+			output * rates.output +
+			read * rates.cacheRead +
+			plain * writeCost +
+			oneHour * write1hCost) /
+		1e6
+	);
+}
+
 // ── The footer ─────────────────────────────────────────────────────────────────
 
 const LIFECYCLE: {match: RegExp; next: string}[] = [
@@ -339,20 +396,19 @@ export default function (cmd: ModApi): void {
 
 	const rules = loadRules(cmd.cwd);
 
-	// One segment per mod, and the TUI collapses it to a single line — so the two
-	// parts that want their own line (the next step, the cost window) are emitted
-	// as feed rows when they change instead.
+	// One segment per mod, and the TUI collapses it to a single line — so the parts
+	// that want a line of their own (the next step, the cost window) are feed rows.
 	const footer = loadFooterConfig(cmd.cwd);
 	let model: string | null = null;
 	let effort: string | null = null;
 	let contextTokens: number | null = null;
 	let cacheTurn: number | null = null;
-	let cacheAvg: number | null = null;
+	let sessionRead = 0; // cached prompt tokens, whole session
+	let sessionTotal = 0; // prompt tokens, whole session
 	let turnCost = 0;
 	let shownCost = 0;
 	let nextStep: string | null = null;
 	let active = false;
-	let lastWindowState: boolean | null = null;
 
 	// The footer is printed verbatim, so styling is ours. `colour: false` in the
 	// config (or --mod-option colour=false) strips every escape.
@@ -363,13 +419,29 @@ export default function (cmd: ModApi): void {
 	const YELLOW = '33';
 	const RED = '31';
 
-	const providerOf = (id: string): string => id.split('/')[0] || id;
 	const windowFor = (id: string | null): number | null => (id ? CONTEXT_WINDOWS[id] ?? null : null);
 	const cacheColour = (hit: number): string =>
 		hit >= footer.cache.warnBelow ? GREEN : hit >= footer.cache.alertBelow ? YELLOW : RED;
 	const contextColour = (pct: number): string =>
 		pct < footer.context.warnAbove ? GREEN : pct < footer.context.alertAbove ? YELLOW : RED;
 	const count = (tokens: number): string => (tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens));
+
+	// The session aggregate is durable: it is seeded from the session's own
+	// entries, so it survives a `/reload` *and* a `--resume` — the documented
+	// reload pattern for a mod with in-memory state.
+	const CACHE_ENTRY = 'proflow/cache';
+	const seedSessionCounters = (): void => {
+		const entries = cmd.session?.getCustomEntries({customType: CACHE_ENTRY}) ?? [];
+		const last = entries.at(-1)?.data as {read?: number; total?: number} | undefined;
+		if (typeof last?.read === 'number' && typeof last.total === 'number') {
+			sessionRead = last.read;
+			sessionTotal = last.total;
+		}
+	};
+	const persistSessionCounters = (): void => {
+		cmd.session?.appendCustomEntry({customType: CACHE_ENTRY, data: {read: sessionRead, total: sessionTotal}});
+	};
+	seedSessionCounters();
 
 	const refresh = (): void => {
 		if (!cmd.ui.capabilities.status) return;
@@ -389,31 +461,37 @@ export default function (cmd: ModApi): void {
 			parts.push(pct === null ? label : paint(`${label} (${pct.toFixed(1)}%)`, contextColour(pct)));
 		}
 		if (cacheTurn !== null) {
-			const avg = cacheAvg === null ? '' : dim(` · avg ${cacheAvg.toFixed(2)}%`);
-			parts.push(`${dim('cache')} ${paint(`${cacheTurn.toFixed(2)}%`, cacheColour(cacheTurn))}${avg}`);
+			parts.push(`${dim('cache')} ${paint(`${cacheTurn.toFixed(2)}%`, cacheColour(cacheTurn))}`);
 		}
-		if (shownCost > 0) parts.push(`${paint(`$${shownCost.toFixed(4)}`, footer.cost)}${dim('/turn')}`);
+		if (sessionTotal > 0) {
+			const avg = (sessionRead / sessionTotal) * 100;
+			parts.push(`${dim('avg')} ${paint(`${avg.toFixed(2)}%`, cacheColour(avg))}`);
+		}
+		// The turn's cost, last — and only when the model's rates are known.
+		if (shownCost > 0) parts.push(paint(`$${shownCost.toFixed(4)}/turn`, footer.cost));
 		cmd.ui.setStatus(parts.length > 0 ? parts.join(dim(' · ')) : 'proflow');
 	};
 
-	const modelOf = (): string => String(cmd.getFlag('deepseek-model') ?? '');
+	/** Is this model one the cost window is configured for? */
+	const onCostWindowModel = (): boolean => {
+		const pattern = String(cmd.getFlag('deepseek-model') ?? '').toLowerCase();
+		if (!pattern || pattern === 'off' || !model) return false;
+		return model.toLowerCase().includes(pattern);
+	};
 
 	/**
-	 * The cost window gets its own feed row, on change (or on the first
-	 * observation, so the current state is not invisible between flips).
+	 * The peak/off-peak state, as a feed row. Re-emitted once per turn so it stays
+	 * visible in the feed — a row cannot persist the way a footer segment does.
 	 */
-	const announceWindow = (): void => {
-		if (cmd.getFlag('deepseek') === false) return;
-		const pattern = modelOf();
-		if (!pattern || pattern === 'off' || !model || !providerOf(model).toLowerCase().includes(pattern.toLowerCase())) return;
+	const windowRow = (): string => {
 		const windows = parseWindows(String(cmd.getFlag('deepseek-window') ?? ''));
-		if (windows.length === 0) return;
+		if (windows.length === 0) return '';
 		const now = new Date();
 		const {inPeak, minutes} = nextFlip(now.getUTCHours() * 60 + now.getUTCMinutes(), windows);
-		if (inPeak === lastWindowState) return;
-		lastWindowState = inPeak;
-		if (!active) return; // nothing to announce before proflow is in use
-		cmd.ui.notify(`[${providerOf(model)}] ${inPeak ? `PEAK — off-peak in ${formatMinutes(minutes)}` : `off-peak (−50%) — peak in ${formatMinutes(minutes)}`}`);
+		const text = inPeak
+			? `PEAK — off-peak in ${formatMinutes(minutes)}`
+			: `off-peak (−50%) — peak in ${formatMinutes(minutes)}`;
+		return paint(text, inPeak ? YELLOW : GREEN);
 	};
 
 	// Active = proflow is actually in use: a lifecycle skill ran, or the tree
@@ -432,7 +510,8 @@ export default function (cmd: ModApi): void {
 
 	// The next step comes from the skill a command activated — the mod never
 	// inspects the command itself, because custom commands emit no event. It gets a
-	// feed row of its own: the footer is one line, by contract.
+	// feed row of its own: the footer is one line, by contract. The harness already
+	// prefixes a row with the mod's name, so the message carries no label of ours.
 	cmd.on('tool_queued', payload => {
 		if (payload.toolName !== 'activate_skill') return;
 		const name = (payload.input as {name?: string} | undefined)?.name;
@@ -441,22 +520,35 @@ export default function (cmd: ModApi): void {
 		if (!step) return;
 		markActive();
 		if (step.next !== nextStep && cmd.getFlag('next-step') !== false) {
-			cmd.ui.notify(`[proflow] next: ${step.next}`);
+			cmd.ui.notify(paint(`next: ${step.next}`, GREEN));
 		}
 		nextStep = step.next;
 		refresh();
 	});
 
-	// A turn's cost is the sum of the requests inside it, so the bucket resets when
-	// a turn starts and the displayed value keeps the previous turn's until then.
+	// A turn's cost is the sum of the requests inside it: the bucket resets when a
+	// turn starts, and the previous turn's value stays visible until the next one.
 	cmd.on('turn_start', () => {
 		turnCost = 0;
 	});
 
-	// Every field below is read from the payload the harness actually sends —
-	// {usage: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd},
-	// model, effort} — with the camel/lower-snake spellings kept as fallbacks for
-	// other providers and for the harness's undici shape. Nothing is guessed.
+	// Once per turn: keep the cost window visible in the feed (a feed row cannot
+	// persist the way a footer segment does), and persist the session counters so
+	// the average survives the next reload or resume.
+	cmd.on('turn_end', () => {
+		if (sessionTotal > 0) persistSessionCounters();
+		if (active && cmd.getFlag('deepseek') !== false && onCostWindowModel()) {
+			const row = windowRow();
+			if (row) cmd.ui.notify(row);
+		}
+	});
+
+	// Every field is read from the payload the harness actually sends —
+	// {usage: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens,
+	// cacheWriteTokens1h?}, model, effort} — with the camel/lower-snake spellings
+	// kept as fallbacks for other providers. The cost is *not* in the payload: the
+	// harness estimates it only when writing the session, so we replicate that
+	// estimator from the tokens and the registry rates.
 	cmd.on('model_request_end', payload => {
 		const usage = (payload.usage ?? {}) as Record<string, number>;
 		const read = usage.cacheReadTokens ?? usage.cacheReadInputTokens ?? usage.cache_read_input_tokens ?? 0;
@@ -468,20 +560,20 @@ export default function (cmd: ModApi): void {
 		// `inputTokens` is the whole prompt for some providers and only the uncached
 		// remainder for others. Deriving the uncached part makes the rate correct
 		// either way, and never counts the cached tokens twice.
-		const uncached = read + written <= input ? input - read - written : input;
-		const total = uncached + read + written;
-		if (total > 0) {
-			const hit = (read / total) * 100;
-			cacheTurn = hit;
-			cacheAvg = cacheAvg === null ? hit : (cacheAvg * 4 + hit) / 5;
+		if (input > 0) {
+			const uncached = read + written <= input ? input - read - written : input;
+			const total = uncached + read + written;
+			cacheTurn = (read / total) * 100;
+			sessionRead += read;
+			sessionTotal += total;
+			contextTokens = input;
 		}
-		if (input > 0) contextTokens = input;
-		if (typeof usage.costUsd === 'number') {
-			turnCost += usage.costUsd;
+		const cost = estimateCost(model, usage);
+		if (cost !== null) {
+			turnCost += cost;
 			shownCost = turnCost;
 		}
 		markActive();
-		announceWindow();
 		refresh();
 	});
 

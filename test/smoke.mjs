@@ -27,6 +27,8 @@ const flags = new Map();
 const hooks = [];
 const handlers = new Map();
 const notices = [];
+const customEntries = [];
+const seeded = [];
 let status = null;
 let confirmAnswer = false;
 
@@ -52,6 +54,15 @@ const cmd = {
 	on(event, handler) {
 		handlers.set(event, handler);
 		return {dispose() {}};
+	},
+	session: {
+		appendCustomEntry(entry) {
+			customEntries.push(entry);
+			return 'entry';
+		},
+		getCustomEntries() {
+			return seeded;
+		},
 	},
 	ui: {
 		setStatus(text) {
@@ -196,43 +207,86 @@ check('the footer stays empty until proflow is actually active', () => {
 });
 
 check('the cache segment reads the fields the harness actually sends', () => {
-	// The real payload, copied from a session transcript:
-	// {usage: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd},
-	//  model, effort} — the older camel/snake spellings never appear.
+	// The real payload, copied from a session transcript. Note there is no cost in
+	// it — the harness estimates that only when it writes the session — so the mod
+	// computes it from the tokens and the registry rates.
 	handlers.get('model_request_end')({
-		usage: {
-			inputTokens: 745503,
-			outputTokens: 3747,
-			cacheReadTokens: 745344,
-			cacheWriteTokens: 0,
-			costUsd: 0.004508082,
-		},
+		usage: {inputTokens: 745503, outputTokens: 3747, cacheReadTokens: 745344, cacheWriteTokens: 0},
 		model: 'deepseek/deepseek-v4.1-flash',
 		effort: 'high',
 	});
 
 	assert.match(status, /deepseek-v4\.1-flash\s*\u001b\[2m\(high\)\u001b\[0m/, `got: ${status}`);
-	// 745344 / 745503 = 99.98%, and `inputTokens` already includes the cached part.
-	assert.match(status, /\u001b\[32m99\.98%\u001b\[0m/, 'a 99.98% hit rate must be green');
+	assert.match(status, /\u001b\[32m99\.98%\u001b\[0m/, 'the turn rate is green at 99.98%');
 	assert.match(status, /ctx 746k \(74\.6%\)/, 'context is tokens plus the share of the known 1M window');
-	assert.match(status, /\u001b\[34m\$0\.0045\u001b\[0m/, 'the cost is always blue');
+	assert.match(status, /\u001b\[2mavg\u001b\[0m \u001b\[32m99\.98%\u001b\[0m/, 'the average is the session aggregate');
+	assert.doesNotMatch(status, /session/i, 'the label is avg — never "session"');
+	// 745344×0.003 + 159×0.15 + 3747×0.6, per million = the harness's own figure.
+	assert.match(status, /\u001b\[34m\$0\.0045\/turn\u001b\[0m/, `the cost is computed and blue: ${status}`);
 	assert.doesNotMatch(status, /PEAK|off-peak/, 'the cost window is not a footer segment');
 	assert.doesNotMatch(status, /next:/, 'nor is the next step');
 });
 
-check('the cost window becomes a feed row naming its provider', () => {
-	const rows = notices.filter(row => row.startsWith('['));
-	assert.equal(rows.length, 1, `expected one window row, got: ${rows.join(' | ')}`);
-	assert.match(rows[0], /^\[deepseek\] (off-peak \(−50%\) — peak in \d|PEAK — off-peak in \d)/);
+check('the cost window row is emitted once per turn, unlabelled and coloured', () => {
+	notices.length = 0;
+	handlers.get('turn_end')();
+	assert.equal(notices.length, 1, `expected one row per turn, got: ${notices.join(' | ')}`);
+	assert.match(notices[0], /\u001b\[(32|33)m(off-peak \(−50%\) — peak in|PEAK — off-peak in) \d/);
+	assert.doesNotMatch(notices[0], /^\[/, 'the harness labels rows with the mod name; we add no second label');
+	assert.doesNotMatch(notices[0], /deepseek/i, 'and no provider prefix of ours');
 });
 
-check('activating a lifecycle skill emits the next step as a feed row', () => {
+check('activating a lifecycle skill emits the next step as a coloured feed row', () => {
 	notices.length = 0;
 	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'spec-driven-development'}});
-	assert.deepEqual(notices, ['[proflow] next: /to-plan']);
-	// Repeating the same skill does not repeat the row.
-	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'spec-driven-reflection'}});
 	assert.equal(notices.length, 1);
+	assert.match(notices[0], /^\u001b\[32mnext: \/to-plan\u001b\[0m$/);
+	// A skill outside the lifecycle adds nothing.
+	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'm2-fix'}});
+	assert.equal(notices.length, 1);
+});
+
+check('the session counters are persisted for the next reload or resume', () => {
+	customEntries.length = 0;
+	handlers.get('turn_end')();
+	const entry = customEntries.at(-1);
+	assert.equal(entry.customType, 'proflow/cache');
+	assert.deepEqual(entry.data, {read: 745344, total: 745503}, 'the aggregate is stored, not a rolling EMA');
+});
+
+check('a resumed session seeds the average from its own entries', async () => {
+	seeded.push({customType: 'proflow/cache', data: {read: 9000, total: 10000}});
+	const fresh = await import(`${modUrl}#seeded`);
+	let freshStatus = null;
+	fresh.default({
+		...cmd,
+		addCommand: () => ({dispose() {}}),
+		addFlag: () => ({dispose() {}}),
+		getFlag: name => flags.get(name),
+		hooks: () => ({dispose() {}}),
+		on: (event, handler) => {
+			handlers.set(`fresh:${event}`, handler);
+			return {dispose() {}};
+		},
+		ui: {
+			setStatus: text => {
+				freshStatus = text;
+				return {dispose() {}};
+			},
+			notify() {},
+			capabilities: {status: true},
+			async confirm() {
+				return true;
+			},
+		},
+	});
+	handlers.get('fresh:model_request_end')({
+		usage: {inputTokens: 1000, outputTokens: 10, cacheReadTokens: 1000, cacheWriteTokens: 0},
+		model: 'deepseek/deepseek-v4.1-flash',
+	});
+	// (9000 + 1000) / (10000 + 1000) = 90.91% — the seed counts, so a resume does
+	// not start the average over.
+	assert.match(freshStatus, /avg\u001b\[0m \u001b\[33m90\.91%/, `the resumed average must include the seed: ${freshStatus}`);
 });
 
 check('a project proflow.jsonc retunes the footer thresholds and colours', () => {
