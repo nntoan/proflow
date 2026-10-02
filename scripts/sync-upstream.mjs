@@ -1,22 +1,28 @@
 #!/usr/bin/env node
-// Re-vendor the upstream agent-skills content this package carries.
+// Re-vendor the upstream agent-skills content the proflow payload carries.
 //
 //   node scripts/sync-upstream.mjs [ref]
 //
-// Clones addyosmani/agent-skills at `ref` (default: main), copies skills/,
-// references/, agents/ and docs/agents.md verbatim, then applies the declared
-// patches in `scripts/patches/agent-skills.mjs` through the shared vendoring
-// engine (`scripts/lib/vendor.mjs`). The command workflows in commands/ are
-// authored here and are never touched by this script.
+// Clones addyosmani/agent-skills at `ref` (default: main) and copies skills/,
+// references/, agents/, `.claude/commands/` and docs/agents.md into
+// `packages/proflow/`, then applies the declared patches
+// (`patches/agent-skills.mjs`, `patches/commands.mjs`) through the shared engine
+// in `tools/vendor.mjs`.
+//
+// Authored content that must live inside a wiped directory — the spec-reviewer
+// persona, the /brainstorm command, the spec-reflection skill — is restored from
+// `overlays/` LAST, so a sync never deletes what proflow owns.
 
 import {cpSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {applyPatches, cleanup, clone, copyTree, readJson, writeRecord} from './lib/vendor.mjs';
-import patches from './patches/agent-skills.mjs';
+import {applyPatches, cleanup, clone, copyTree, readJson, writeRecord} from '../tools/vendor.mjs';
+import agentSkillsPatches from '../patches/agent-skills.mjs';
+import commandPatches, {rename as commandRename} from '../patches/commands.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PKG = join(ROOT, 'packages', 'proflow');
 const REF = process.argv[2] || 'main';
 const REPO = process.env.AGENT_SKILLS_REPO || 'https://github.com/addyosmani/agent-skills.git';
 
@@ -27,33 +33,44 @@ try {
 	const version = readJson(join(stage, '.claude-plugin', 'plugin.json'), {})?.version ?? 'unknown';
 
 	for (const dir of ['skills', 'references', 'agents']) {
-		rmSync(join(ROOT, dir), {recursive: true, force: true});
-		copyTree(join(stage, dir), join(ROOT, dir));
+		rmSync(join(PKG, dir), {recursive: true, force: true});
+		copyTree(join(stage, dir), join(PKG, dir));
 		console.log(`vendored ${dir}/`);
 	}
-	cpSync(join(stage, 'docs', 'agents.md'), join(ROOT, 'docs', 'agents.md'));
+
+	// Commands — upstream keeps them under .claude/, named for Claude's slash
+	// menu. proflow renames the two that collide with Command Code built-ins.
+	rmSync(join(PKG, 'commands'), {recursive: true, force: true});
+	copyTree(join(stage, '.claude', 'commands'), join(PKG, 'commands'), {
+		rename: Object.fromEntries(
+			Object.entries(commandRename).map(([from, to]) => [`${from}.md`, `${to}.md`]),
+		),
+	});
+	console.log('vendored commands/');
+
+	cpSync(join(stage, 'docs', 'agents.md'), join(PKG, 'docs', 'agents.md'));
 	console.log('vendored docs/agents.md');
 
-	const applied = applyPatches(ROOT, patches);
+	const applied = applyPatches(PKG, [...agentSkillsPatches, ...commandPatches]);
 	console.log(`patched ${applied.length} file(s): ${applied.join(', ')}`);
 
-	// Authored overlays (e.g. the spec-reviewer persona, which upstream has no
-	// equivalent for) are restored LAST, so a sync never deletes content proflow
+	// Authored overlays are restored LAST so a sync never deletes content proflow
 	// owns. This is why authored files must not live directly under the wiped
-	// skills/ · references/ · agents/ directories.
+	// skills/ · references/ · agents/ · commands/ directories.
 	if (existsSync(join(ROOT, 'overlays'))) {
-		copyTree(join(ROOT, 'overlays'), ROOT);
+		copyTree(join(ROOT, 'overlays'), PKG);
 		console.log('restored overlays/');
 	}
 
-	cpSync(join(stage, 'LICENSE'), join(ROOT, 'LICENSE.agent-skills'));
-	writeRecord(join(ROOT, 'VENDOR.json'), {
+	cpSync(join(stage, 'LICENSE'), join(PKG, 'LICENSE.agent-skills'));
+	writeRecord(join(PKG, 'VENDOR.json'), {
 		source: 'https://github.com/addyosmani/agent-skills',
 		repo: REPO,
 		ref: REF,
 		commit,
 		version,
 		patches: applied,
+		commandRenames: commandRename,
 		syncedAt: new Date().toISOString(),
 	});
 

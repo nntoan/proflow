@@ -5,8 +5,8 @@
 //
 // magento2-tools is a Claude Code plugin, so its content assumes a Claude
 // environment. This script clones it and applies the declarative rules in
-// `scripts/patches/magento2.mjs` through the shared vendoring engine
-// (`scripts/lib/vendor.mjs`) — the same machinery `sync-upstream.mjs` uses, so
+// `patches/magento2.mjs` through the shared vendoring engine
+// (`tools/vendor.mjs`) — the same machinery `sync-upstream.mjs` uses, so
 // there is one declarative path and no duplicated logic. See that patch module
 // for what each rule does (namespacing, plugin-root paths, config locations,
 // agent rename + tool ids, dev-file exclusion).
@@ -17,11 +17,11 @@ import {cpSync, existsSync, mkdtempSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {cleanup, clone, copyFile, copyTree, readJson, writeRecord} from './lib/vendor.mjs';
-import * as m2 from './patches/magento2.mjs';
+import {cleanup, clone, copyFile, copyTree, readJson, writeRecord} from '../tools/vendor.mjs';
+import * as m2 from '../patches/magento2.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'components', 'magento2');
+const OUT = join(ROOT, 'packages', 'magento2');
 const REF = process.argv[2] || 'main';
 const REPO = process.env.MAGENTO2_TOOLS_REPO || 'https://github.com/muon-m2/magento2-tools.git';
 
@@ -39,8 +39,11 @@ try {
 	);
 	const withGeneric = text => m2.transform(text, skillNames);
 
-	// Rebuild from scratch so removed/renamed files (reviewer.md, gen-routing.sh) don't linger.
-	rmSync(OUT, {recursive: true, force: true});
+	// Rebuild the vendored entries from scratch so removed/renamed files
+	// (reviewer.md, gen-routing.sh) don't linger. Only the vendored entries are
+	// removed — `package.json` and proflow's own `LICENSE` are left alone.
+	const VENDORED = ['skills', 'commands', 'agents', 'hooks', 'LICENSE.magento2', 'VENDOR.json'];
+	for (const entry of VENDORED) rmSync(join(OUT, entry), {recursive: true, force: true});
 
 	// Skills — namespaced dir + `name:`, descriptions made YAML-safe, dev files excluded.
 	for (const name of skillNames) {
@@ -78,14 +81,16 @@ try {
 		transform: text => m2.adaptHook(withGeneric(text)),
 	});
 
-	cpSync(join(stage, 'LICENSE'), join(OUT, 'LICENSE'));
+	// Upstream's own license, kept verbatim beside proflow's (which covers the
+	// package and the adaptation work).
+	cpSync(join(stage, 'LICENSE'), join(OUT, 'LICENSE.magento2'));
 	writeRecord(join(OUT, 'VENDOR.json'), {
 		source: 'https://github.com/muon-m2/magento2-tools',
 		repo: REPO,
 		ref: REF,
 		commit,
 		version: plugin.version,
-		transform: 'scripts/patches/magento2.mjs',
+		transform: 'patches/magento2.mjs',
 		excluded: m2.exclude,
 		syncedAt: new Date().toISOString(),
 	});

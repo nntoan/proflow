@@ -4,7 +4,7 @@
 // (magento2-tools) use these primitives, so there is ONE declarative path for
 // cloning, copying, patching, and recording — no duplicated logic between them.
 //
-// A "patch set" is data (see `scripts/patches/*.mjs`):
+// A "patch set" is data (see `patches/*.mjs`):
 //
 //   [{
 //     file: 'skills/x/SKILL.md',            // path relative to the vendored root
@@ -102,7 +102,7 @@ export function applyPatches(root, patches) {
 				throw new Error(
 					`vendor patch drift in ${patch.file}: expected ${expected} match(es) of ` +
 						`${JSON.stringify(rule.find.slice(0, 70))}…, found ${found}. ` +
-						'Upstream changed — update scripts/patches/*.mjs.',
+						'Upstream changed — update patches/*.mjs.',
 				);
 			}
 			text = text.split(rule.find).join(rule.with);
