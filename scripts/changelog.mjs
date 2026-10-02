@@ -99,7 +99,7 @@ export function readCommits(from, to) {
 export function render(commits, {repo = null, from = null, to = null} = {}) {
 	if (commits.length === 0) return 'No changes.\n';
 
-	const link = sha => (repo ? `([\`${sha.slice(0, 7)}\`](https://github.com/${repo}/commit/${sha}))` : `(\`${sha.slice(0, 7)}\`)`);
+	const link = sha => (repo ? `[\`${sha.slice(0, 7)}\`](https://github.com/${repo}/commit/${sha})` : `\`${sha.slice(0, 7)}\``);
 	const entry = commit => {
 		const scope = commit.scope ? `**${commit.scope}:** ` : '';
 		return `- ${scope}${commit.description} ${link(commit.sha)}`;

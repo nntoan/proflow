@@ -69,7 +69,7 @@ check('renders grouped sections, bold scopes, commit links and the compare foote
 		{repo: 'nntoan/proflow', from: 'v0.1.2', to: 'v0.1.3'},
 	);
 
-	assert.match(markdown, /- \*\*cli:\*\* rewrite the installer \(\[`aaaaaaa`\]\(https:\/\/github\.com\/nntoan\/proflow\/commit\/a{40}\)\)/);
+	assert.match(markdown, /- \*\*cli:\*\* rewrite the installer \[`aaaaaaa`\]\(https:\/\/github\.com\/nntoan\/proflow\/commit\/a{40}\)/);
 	assert.match(markdown, /## 🐛 Bug Fixes\n\n- never install bare/);
 	assert.match(markdown, /## 🧹 Chores\n\n- \*\*assets:\*\* add the hero image/);
 	assert.match(markdown, /## 📌 Other\n\n- Update something by hand/);
@@ -92,7 +92,7 @@ check('breaking changes are called out first, and still listed under their type'
 check('no commits renders a single line, and links degrade without a repo', () => {
 	assert.equal(render([], {from: 'v1', to: 'v2'}), 'No changes.\n');
 	const bare = render([commit('feat: x')], {from: 'v1', to: 'v2'});
-	assert.match(bare, /- x \(`aaaaaaa`\)/);
+	assert.match(bare, /- x `aaaaaaa`$/m);
 	assert.doesNotMatch(bare, /github\.com\/undefined/);
 	assert.match(bare, /\*\*Full changelog\*\*: `v1\.\.\.v2`/);
 });
