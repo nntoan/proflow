@@ -194,6 +194,71 @@ export function tierOf(command: string, rules: GuardRules): 'allow' | 'deny' | '
 	return null;
 }
 
+// ── Footer configuration ───────────────────────────────────────────────────────
+
+const ANSI_COLOURS: Record<string, string> = {
+	black: '30', red: '31', green: '32', yellow: '33', blue: '34',
+	magenta: '35', cyan: '36', white: '37', dim: '2',
+};
+
+export interface FooterConfig {
+	colour: boolean;
+	cost: string;
+	cache: {warnBelow: number; alertBelow: number};
+	context: {warnAbove: number; alertAbove: number};
+}
+
+/**
+ * Footer thresholds, layered like the guard rules: built-in defaults, then
+ * `~/.commandcode/proflow.json(c)`, then `.commandcode/proflow.json(c)`.
+ * A malformed file never breaks the footer.
+ */
+export function loadFooterConfig(cwd: string, home = homedir()): FooterConfig {
+	const config: FooterConfig = {
+		colour: true,
+		cost: ANSI_COLOURS.blue,
+		cache: {warnBelow: 95, alertBelow: 80},
+		context: {warnAbove: 80, alertAbove: 90},
+	};
+	for (const dir of [join(home, '.commandcode'), join(cwd, '.commandcode')]) {
+		for (const name of ['proflow.json', 'proflow.jsonc']) {
+			const file = join(dir, name);
+			if (!existsSync(file)) continue;
+			try {
+				const footer = (parseJsonc(readFileSync(file, 'utf8')) as {
+					footer?: Partial<FooterConfig> & Record<string, unknown>;
+				})?.footer;
+				if (!footer) continue;
+				if (typeof footer.colour === 'boolean') config.colour = footer.colour;
+				if (typeof footer.cost === 'string') config.cost = ANSI_COLOURS[footer.cost] ?? config.cost;
+				for (const key of ['cache', 'context'] as const) {
+					const layer = footer[key] as Record<string, unknown> | undefined;
+					if (!layer) continue;
+					for (const [name, value] of Object.entries(layer)) {
+						if (typeof value === 'number') (config[key] as Record<string, number>)[name] = value;
+					}
+				}
+			} catch {
+				// Never let a config typo take the footer down.
+			}
+		}
+	}
+	return config;
+}
+
+/**
+ * Context windows for the models we can name, from Command Code's own registry
+ * (`reference/models.md`). A model that is not here shows tokens with no
+ * percentage rather than a guess.
+ */
+export const CONTEXT_WINDOWS: Record<string, number> = {
+	'deepseek/deepseek-v4.1-flash': 1_000_000,
+	'deepseek/deepseek-v4.1-flash-fast': 1_000_000,
+	'deepseek/deepseek-v4-flash-fast': 1_000_000,
+	'deepseek/deepseek-v4-flash-vision-exp': 1_000_000,
+	'moonshotai/Kimi-K3': 1_000_000,
+};
+
 // ── The footer ─────────────────────────────────────────────────────────────────
 
 const LIFECYCLE: {match: RegExp; next: string}[] = [
@@ -249,6 +314,11 @@ export default function (cmd: ModApi): void {
 		description: 'Dangerous-command guard: off | deny | all',
 	});
 	cmd.addFlag('footer', {type: 'boolean', default: true, description: 'Show the proflow footer segment.'});
+	cmd.addFlag('colour', {
+		type: 'boolean',
+		default: true,
+		description: 'Colour the footer (false strips every escape; proflow.jsonc can set this too).',
+	});
 	cmd.addFlag('next-step', {type: 'boolean', default: true, description: 'Show the next lifecycle step.'});
 	cmd.addFlag('deepseek', {type: 'boolean', default: true, description: 'Show the peak/off-peak cost window.'});
 	cmd.addFlag('deepseek-window', {
@@ -269,38 +339,81 @@ export default function (cmd: ModApi): void {
 
 	const rules = loadRules(cmd.cwd);
 
-	// One segment per mod, so every part is composed into a single line.
+	// One segment per mod, and the TUI collapses it to a single line — so the two
+	// parts that want their own line (the next step, the cost window) are emitted
+	// as feed rows when they change instead.
+	const footer = loadFooterConfig(cmd.cwd);
+	let model: string | null = null;
+	let effort: string | null = null;
+	let contextTokens: number | null = null;
 	let cacheTurn: number | null = null;
 	let cacheAvg: number | null = null;
+	let turnCost = 0;
+	let shownCost = 0;
 	let nextStep: string | null = null;
 	let active = false;
+	let lastWindowState: boolean | null = null;
+
+	// The footer is printed verbatim, so styling is ours. `colour: false` in the
+	// config (or --mod-option colour=false) strips every escape.
+	const styling = footer.colour && cmd.getFlag('colour') !== false;
+	const paint = (text: string, colour: string): string => (styling ? `\u001b[${colour}m${text}\u001b[0m` : text);
+	const dim = (text: string): string => paint(text, '2');
+	const GREEN = '32';
+	const YELLOW = '33';
+	const RED = '31';
+
+	const providerOf = (id: string): string => id.split('/')[0] || id;
+	const windowFor = (id: string | null): number | null => (id ? CONTEXT_WINDOWS[id] ?? null : null);
+	const cacheColour = (hit: number): string =>
+		hit >= footer.cache.warnBelow ? GREEN : hit >= footer.cache.alertBelow ? YELLOW : RED;
+	const contextColour = (pct: number): string =>
+		pct < footer.context.warnAbove ? GREEN : pct < footer.context.alertAbove ? YELLOW : RED;
+	const count = (tokens: number): string => (tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens));
+
 	const refresh = (): void => {
 		if (!cmd.ui.capabilities.status) return;
 		if (cmd.getFlag('footer') === false || !active) {
 			cmd.ui.setStatus(null);
 			return;
 		}
-		const parts = ['proflow'];
+		const parts: string[] = [];
+		if (model) {
+			const name = model.includes('/') ? model.split('/').pop() : model;
+			parts.push(`${name}${effort ? ` ${dim(`(${effort})`)}` : ''}`);
+		}
+		if (contextTokens !== null) {
+			const window = windowFor(model);
+			const pct = window ? (contextTokens / window) * 100 : null;
+			const label = `ctx ${count(contextTokens)}`;
+			parts.push(pct === null ? label : paint(`${label} (${pct.toFixed(1)}%)`, contextColour(pct)));
+		}
 		if (cacheTurn !== null) {
-			const avg = cacheAvg === null ? '' : ` • avg ${cacheAvg.toFixed(2)}%`;
-			parts.push(`cache ${cacheTurn.toFixed(2)}%${avg}`);
+			const avg = cacheAvg === null ? '' : dim(` · avg ${cacheAvg.toFixed(2)}%`);
+			parts.push(`${dim('cache')} ${paint(`${cacheTurn.toFixed(2)}%`, cacheColour(cacheTurn))}${avg}`);
 		}
-		const model = String(cmd.getFlag('deepseek-model') ?? '');
-		if (cmd.getFlag('deepseek') !== false && model && model !== 'off') {
-			const windows = parseWindows(String(cmd.getFlag('deepseek-window') ?? ''));
-			if (windows.length > 0) {
-				const now = new Date();
-				const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-				const {inPeak, minutes: until} = nextFlip(minutes, windows);
-				parts.push(
-					inPeak
-						? `PEAK • off-peak in ${formatMinutes(until)}`
-						: `off-peak (−50%) • peak in ${formatMinutes(until)}`,
-				);
-			}
-		}
-		if (nextStep && cmd.getFlag('next-step') !== false) parts.push(`next: ${nextStep}`);
-		cmd.ui.setStatus(parts.join(' · '));
+		if (shownCost > 0) parts.push(`${paint(`$${shownCost.toFixed(4)}`, footer.cost)}${dim('/turn')}`);
+		cmd.ui.setStatus(parts.length > 0 ? parts.join(dim(' · ')) : 'proflow');
+	};
+
+	const modelOf = (): string => String(cmd.getFlag('deepseek-model') ?? '');
+
+	/**
+	 * The cost window gets its own feed row, on change (or on the first
+	 * observation, so the current state is not invisible between flips).
+	 */
+	const announceWindow = (): void => {
+		if (cmd.getFlag('deepseek') === false) return;
+		const pattern = modelOf();
+		if (!pattern || pattern === 'off' || !model || !providerOf(model).toLowerCase().includes(pattern.toLowerCase())) return;
+		const windows = parseWindows(String(cmd.getFlag('deepseek-window') ?? ''));
+		if (windows.length === 0) return;
+		const now = new Date();
+		const {inPeak, minutes} = nextFlip(now.getUTCHours() * 60 + now.getUTCMinutes(), windows);
+		if (inPeak === lastWindowState) return;
+		lastWindowState = inPeak;
+		if (!active) return; // nothing to announce before proflow is in use
+		cmd.ui.notify(`[${providerOf(model)}] ${inPeak ? `PEAK — off-peak in ${formatMinutes(minutes)}` : `off-peak (−50%) — peak in ${formatMinutes(minutes)}`}`);
 	};
 
 	// Active = proflow is actually in use: a lifecycle skill ran, or the tree
@@ -318,30 +431,57 @@ export default function (cmd: ModApi): void {
 	}
 
 	// The next step comes from the skill a command activated — the mod never
-	// inspects the command itself, because custom commands emit no event.
+	// inspects the command itself, because custom commands emit no event. It gets a
+	// feed row of its own: the footer is one line, by contract.
 	cmd.on('tool_queued', payload => {
 		if (payload.toolName !== 'activate_skill') return;
 		const name = (payload.input as {name?: string} | undefined)?.name;
 		if (typeof name !== 'string') return;
 		const step = LIFECYCLE.find(entry => entry.match.test(name));
 		if (!step) return;
-		nextStep = step.next;
 		markActive();
+		if (step.next !== nextStep && cmd.getFlag('next-step') !== false) {
+			cmd.ui.notify(`[proflow] next: ${step.next}`);
+		}
+		nextStep = step.next;
 		refresh();
 	});
 
-	// Cache-hit rate from the usage the harness reports per model request.
+	// A turn's cost is the sum of the requests inside it, so the bucket resets when
+	// a turn starts and the displayed value keeps the previous turn's until then.
+	cmd.on('turn_start', () => {
+		turnCost = 0;
+	});
+
+	// Every field below is read from the payload the harness actually sends —
+	// {usage: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd},
+	// model, effort} — with the camel/lower-snake spellings kept as fallbacks for
+	// other providers and for the harness's undici shape. Nothing is guessed.
 	cmd.on('model_request_end', payload => {
 		const usage = (payload.usage ?? {}) as Record<string, number>;
-		const read = usage.cacheReadInputTokens ?? usage.cache_read_input_tokens ?? 0;
-		const created = usage.cacheCreationInputTokens ?? usage.cache_creation_input_tokens ?? 0;
+		const read = usage.cacheReadTokens ?? usage.cacheReadInputTokens ?? usage.cache_read_input_tokens ?? 0;
+		const written = usage.cacheWriteTokens ?? usage.cacheCreationInputTokens ?? usage.cache_creation_input_tokens ?? 0;
 		const input = usage.inputTokens ?? usage.input_tokens ?? 0;
-		const total = read + created + input;
-		if (!total) return;
-		const hit = (read / total) * 100;
-		cacheTurn = hit;
-		cacheAvg = cacheAvg === null ? hit : (cacheAvg * 4 + hit) / 5;
+		if (typeof payload.model === 'string') model = payload.model;
+		if (typeof payload.effort === 'string') effort = payload.effort;
+
+		// `inputTokens` is the whole prompt for some providers and only the uncached
+		// remainder for others. Deriving the uncached part makes the rate correct
+		// either way, and never counts the cached tokens twice.
+		const uncached = read + written <= input ? input - read - written : input;
+		const total = uncached + read + written;
+		if (total > 0) {
+			const hit = (read / total) * 100;
+			cacheTurn = hit;
+			cacheAvg = cacheAvg === null ? hit : (cacheAvg * 4 + hit) / 5;
+		}
+		if (input > 0) contextTokens = input;
+		if (typeof usage.costUsd === 'number') {
+			turnCost += usage.costUsd;
+			shownCost = turnCost;
+		}
 		markActive();
+		announceWindow();
 		refresh();
 	});
 

@@ -2,7 +2,7 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "https://raw.githubusercontent.com/nntoan/proflow/main/packages/proflow/proflow.schema.json",
 	"title": "proflow configuration",
-	"description": "Guard rules for the proflow harness mod. Read from ~/.commandcode/proflow.json(c) and .commandcode/proflow.json(c); built-in rules always apply and these layers add to (or waive) them.",
+	"description": "Configuration for the proflow harness mod: the dangerous-command guard and the footer. Read from ~/.commandcode/proflow.json(c) then .commandcode/proflow.json(c); built-in rules always apply and these layers add to (or waive) them.",
 	"type": "object",
 	"additionalProperties": false,
 	"properties": {
@@ -28,6 +28,40 @@
 					"type": "array",
 					"description": "Regular expressions exempt from the deny and confirm tiers.",
 					"items": {"type": "string"}
+				}
+			}
+		},
+		"footer": {
+			"type": "object",
+			"description": "Footer thresholds and colours. Every key is optional; the mod's defaults apply otherwise.",
+			"additionalProperties": false,
+			"properties": {
+				"cache": {
+					"type": "object",
+					"description": "Cache-hit rate thresholds: green at or above warnBelow, yellow at or above alertBelow, red below that.",
+					"additionalProperties": false,
+					"properties": {
+						"warnBelow": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 95."},
+						"alertBelow": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 80."}
+					}
+				},
+				"context": {
+					"type": "object",
+					"description": "Context-usage thresholds: green below warnAbove, yellow below alertAbove, red at or above it.",
+					"additionalProperties": false,
+					"properties": {
+						"warnAbove": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 80."},
+						"alertAbove": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 90."}
+					}
+				},
+				"cost": {
+					"type": "string",
+					"description": "Always applied to the turn cost. Default \"blue\".",
+					"enum": ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "dim"]
+				},
+				"colour": {
+					"type": "boolean",
+					"description": "false prints the footer with no ANSI escapes at all. Default true."
 				}
 			}
 		}

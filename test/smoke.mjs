@@ -26,6 +26,7 @@ const commands = new Map();
 const flags = new Map();
 const hooks = [];
 const handlers = new Map();
+const notices = [];
 let status = null;
 let confirmAnswer = false;
 
@@ -57,7 +58,9 @@ const cmd = {
 			status = text;
 			return {dispose() {}};
 		},
-		notify() {},
+		notify(message) {
+			notices.push(message);
+		},
 		capabilities: {status: true},
 		async confirm() {
 			return confirmAnswer;
@@ -84,7 +87,7 @@ check('registers /proflow and nothing else', () => {
 	assert.deepEqual([...commands.keys()], ['proflow']);
 	assert.deepEqual(
 		[...flags.keys()].sort(),
-		['deepseek', 'deepseek-holidays', 'deepseek-model', 'deepseek-window', 'footer', 'guard', 'next-step'],
+		['colour', 'deepseek', 'deepseek-holidays', 'deepseek-model', 'deepseek-window', 'footer', 'guard', 'next-step'],
 	);
 });
 
@@ -192,27 +195,78 @@ check('the footer stays empty until proflow is actually active', () => {
 	assert.equal(status, null);
 });
 
-check('activating a lifecycle skill sets the next step', () => {
-	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'spec-driven-development'}});
-	assert.match(status, /^proflow/);
-	assert.match(status, /next: \/to-plan/);
-});
-
-check('the cost-window segment names no provider', () => {
-	assert.match(status, /(off-peak \(−50%\) • peak in |PEAK • off-peak in )/);
-	assert.doesNotMatch(status, /deepseek/i, 'the rendered footer must not name the provider');
-});
-
-check('the cache-hit segment comes from the reported usage', () => {
+check('the cache segment reads the fields the harness actually sends', () => {
+	// The real payload, copied from a session transcript:
+	// {usage: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd},
+	//  model, effort} — the older camel/snake spellings never appear.
 	handlers.get('model_request_end')({
-		usage: {inputTokens: 1, cacheReadInputTokens: 999, cacheCreationInputTokens: 0},
+		usage: {
+			inputTokens: 745503,
+			outputTokens: 3747,
+			cacheReadTokens: 745344,
+			cacheWriteTokens: 0,
+			costUsd: 0.004508082,
+		},
+		model: 'deepseek/deepseek-v4.1-flash',
+		effort: 'high',
 	});
-	assert.match(status, /cache 99\.90% • avg 99\.90%/);
+
+	assert.match(status, /deepseek-v4\.1-flash\s*\u001b\[2m\(high\)\u001b\[0m/, `got: ${status}`);
+	// 745344 / 745503 = 99.98%, and `inputTokens` already includes the cached part.
+	assert.match(status, /\u001b\[32m99\.98%\u001b\[0m/, 'a 99.98% hit rate must be green');
+	assert.match(status, /ctx 746k \(74\.6%\)/, 'context is tokens plus the share of the known 1M window');
+	assert.match(status, /\u001b\[34m\$0\.0045\u001b\[0m/, 'the cost is always blue');
+	assert.doesNotMatch(status, /PEAK|off-peak/, 'the cost window is not a footer segment');
+	assert.doesNotMatch(status, /next:/, 'nor is the next step');
+});
+
+check('the cost window becomes a feed row naming its provider', () => {
+	const rows = notices.filter(row => row.startsWith('['));
+	assert.equal(rows.length, 1, `expected one window row, got: ${rows.join(' | ')}`);
+	assert.match(rows[0], /^\[deepseek\] (off-peak \(−50%\) — peak in \d|PEAK — off-peak in \d)/);
+});
+
+check('activating a lifecycle skill emits the next step as a feed row', () => {
+	notices.length = 0;
+	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'spec-driven-development'}});
+	assert.deepEqual(notices, ['[proflow] next: /to-plan']);
+	// Repeating the same skill does not repeat the row.
+	handlers.get('tool_queued')({toolName: 'activate_skill', input: {name: 'spec-driven-reflection'}});
+	assert.equal(notices.length, 1);
+});
+
+check('a project proflow.jsonc retunes the footer thresholds and colours', () => {
+	const defaults = mod.loadFooterConfig(project, home);
+	assert.deepEqual(defaults.cache, {warnBelow: 95, alertBelow: 80});
+	assert.deepEqual(defaults.context, {warnAbove: 80, alertAbove: 90});
+	assert.equal(defaults.cost, '34', 'blue by default');
+	assert.equal(defaults.colour, true);
+
+	writeFileSync(
+		join(project, '.commandcode', 'proflow.jsonc'),
+		`{
+			"guard": {"deny": ["\\\\bwire-credentials\\\\b"], "allow": ["push --force origin feature"]},
+			"footer": {
+				"cache": {"warnBelow": 100, "alertBelow": 99},   // now everything is at most yellow
+				"cost": "magenta",
+				"colour": false,
+			},
+		}`,
+	);
+	const tuned = mod.loadFooterConfig(project, home);
+	assert.deepEqual(tuned.cache, {warnBelow: 100, alertBelow: 99});
+	assert.equal(tuned.cost, '35', 'magenta');
+	assert.equal(tuned.colour, false, 'ANSI escapes disabled');
+});
+
+check('an unknown model shows tokens without a percentage', () => {
+	assert.equal(mod.CONTEXT_WINDOWS['deepseek/deepseek-v4.1-flash'], 1_000_000);
+	assert.equal(mod.CONTEXT_WINDOWS['some/unknown-model'], undefined, 'no window is invented');
 });
 
 check('footer=false clears the segment', () => {
 	flags.set('footer', false);
-	handlers.get('model_request_end')({usage: {inputTokens: 1, cacheReadInputTokens: 1}});
+	handlers.get('model_request_end')({usage: {inputTokens: 1, cacheReadTokens: 1}});
 	assert.equal(status, null);
 	flags.set('footer', true);
 });

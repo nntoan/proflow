@@ -1,19 +1,32 @@
-// proflow guard rules — JSONC, so comments and trailing commas are fine.
+// proflow configuration — JSONC, so comments and trailing commas are fine.
 //
-// The built-in deny/confirm tiers always apply; this file only adds to them or
-// waives them. Precedence is builtins → user (~/.commandcode) → project
-// (.commandcode), and within one command allow beats deny beats confirm.
-//
-// Patterns are JavaScript regular expressions, tested against the raw shell
-// command before it runs.
+// Read from ~/.commandcode/proflow.json(c) then .commandcode/proflow.json(c);
+// the project layer wins. Every key is optional and the values here are the
+// defaults the mod ships with.
 {
 	"$schema": "https://raw.githubusercontent.com/nntoan/proflow/main/packages/proflow/proflow.schema.json",
 	"guard": {
-		// Extra commands to hard-block.
+		// Extra commands to hard-block. The built-in deny/confirm tiers always
+		// apply; these add to them. Patterns are JavaScript regular expressions,
+		// tested against the raw shell command before it runs.
 		"deny": [],
 		// Extra commands to ask about before running.
 		"confirm": [],
 		// Commands to exempt from deny/confirm, e.g. "rm -rf ./build".
 		"allow": []
+	},
+	"footer": {
+		// Cache-hit rate: green at or above warnBelow, yellow at or above
+		// alertBelow, red below that.
+		"cache": {"warnBelow": 95, "alertBelow": 80},
+		// Context usage: green below warnAbove, yellow below alertAbove, red at or
+		// above it. Ignored for a model whose context window we do not know — the
+		// footer then shows the token count with no percentage.
+		"context": {"warnAbove": 80, "alertAbove": 90},
+		// The turn cost is always this colour: black · red · green · yellow · blue ·
+		// magenta · cyan · white · dim.
+		"cost": "blue",
+		// false prints the footer with no ANSI escapes at all.
+		"colour": true
 	}
 }
