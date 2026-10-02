@@ -404,6 +404,13 @@ function install(opts, selection) {
 }
 
 function uninstall(opts) {
+	// The rate snapshot is generated, not copied, so it is not in the manifest.
+	try {
+		if (!opts.dryRun) rmSync(join(scopeDir(opts), 'rates.json'), {force: true});
+	} catch {
+		// nothing to remove, or not removable — never fail an uninstall over it
+	}
+
 	const ccDir = scopeDir(opts);
 	const manifest = readManifest(ccDir);
 	if (!manifest) return warn(`proflow is not installed in ${ccDir}`);

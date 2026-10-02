@@ -17,17 +17,23 @@
 				"deny": {
 					"type": "array",
 					"description": "Regular expressions for commands to hard-block before execution.",
-					"items": {"type": "string"}
+					"items": {
+						"type": "string"
+					}
 				},
 				"confirm": {
 					"type": "array",
 					"description": "Regular expressions for commands that require confirmation.",
-					"items": {"type": "string"}
+					"items": {
+						"type": "string"
+					}
 				},
 				"allow": {
 					"type": "array",
 					"description": "Regular expressions exempt from the deny and confirm tiers.",
-					"items": {"type": "string"}
+					"items": {
+						"type": "string"
+					}
 				}
 			}
 		},
@@ -41,8 +47,18 @@
 					"description": "Cache-hit rate thresholds: green at or above warnBelow, yellow at or above alertBelow, red below that.",
 					"additionalProperties": false,
 					"properties": {
-						"warnBelow": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 95."},
-						"alertBelow": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 80."}
+						"warnBelow": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 100,
+							"description": "Default 95."
+						},
+						"alertBelow": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 100,
+							"description": "Default 80."
+						}
 					}
 				},
 				"context": {
@@ -50,19 +66,78 @@
 					"description": "Context-usage thresholds: green below warnAbove, yellow below alertAbove, red at or above it.",
 					"additionalProperties": false,
 					"properties": {
-						"warnAbove": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 80."},
-						"alertAbove": {"type": "number", "minimum": 0, "maximum": 100, "description": "Default 90."}
+						"warnAbove": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 100,
+							"description": "Default 80."
+						},
+						"alertAbove": {
+							"type": "number",
+							"minimum": 0,
+							"maximum": 100,
+							"description": "Default 90."
+						}
 					}
 				},
 				"cost": {
 					"type": "string",
 					"description": "Always applied to the turn cost. Default \"blue\".",
-					"enum": ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "dim"]
+					"enum": [
+						"black",
+						"red",
+						"green",
+						"yellow",
+						"blue",
+						"magenta",
+						"cyan",
+						"white",
+						"dim"
+					]
 				},
 				"colour": {
 					"type": "boolean",
 					"description": "false prints the footer with no ANSI escapes at all. Default true."
 				}
+			}
+		},
+		"rates": {
+			"type": "string",
+			"enum": [
+				"snapshot",
+				"runtime"
+			],
+			"default": "snapshot",
+			"description": "Where the footer's rates come from: 'snapshot' reads ~/.commandcode/rates.json (written at install time, refreshable with /proflow --refresh-rates), 'runtime' reads the installed Command Code registry on every launch."
+		},
+		"prices": {
+			"type": "object",
+			"description": "Per-model rate overrides, in USD per million tokens, applied on top of whichever source `rates` selects. A model covered by neither shows no cost.",
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"input": {
+						"type": "number"
+					},
+					"output": {
+						"type": "number"
+					},
+					"cacheRead": {
+						"type": "number"
+					},
+					"cacheWrite": {
+						"type": "number"
+					},
+					"cacheWrite1h": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"input",
+					"output",
+					"cacheRead"
+				],
+				"additionalProperties": false
 			}
 		}
 	}

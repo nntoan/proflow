@@ -28,5 +28,13 @@
 		"cost": "blue",
 		// false prints the footer with no ANSI escapes at all.
 		"colour": true
-	}
+	},
+	// Where the footer's cost comes from, in USD per million tokens.
+	//   "snapshot" → ~/.commandcode/rates.json, written at install time and
+	//                refreshable with /proflow --refresh-rates
+	//   "runtime"  → read from the installed Command Code registry each launch
+	// `prices` overrides either source per model; a model covered by neither
+	// shows no cost segment at all.
+	"rates": "snapshot",
+	"prices": {},
 }
