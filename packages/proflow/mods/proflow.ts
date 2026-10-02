@@ -784,8 +784,22 @@ export default function (cmd: ModApi): void {
 					`  footer       ${cmd.getFlag('footer') === false ? 'off' : 'on'}`,
 					`  next-step    ${cmd.getFlag('next-step') === false ? 'off' : 'on'}${nextStep ? ` (next: ${nextStep})` : ''}`,
 					`  cost window  ${cmd.getFlag('deepseek-window')}`,
+					`  rates        ${existsSync(join(homedir(), '.commandcode', 'rates.json')) ? 'snapshot' : 'live registry'}`,
 					`  config       ${config || '(none — run the installer to create one)'}`,
 				].join('\n'),
+			};
+		},
+	});
+
+	cmd.addCommand({
+		name: 'proflow-rates',
+		description: 'Refresh the rate snapshot from the installed Command Code registry',
+		handler: () => {
+			const result = refreshRates();
+			return {
+				message: result
+					? `proflow rates — wrote ${result.count} models to ${result.file}`
+					: 'proflow rates — no installed Command Code registry found; the footer reads it live instead.',
 			};
 		},
 	});
