@@ -94,6 +94,23 @@ check('orca_read refuses mutations and orca_run carries them', async () => {
 	assert.notEqual(orca.tools.get('orca_run').readOnly, true);
 });
 
+check('gh_read allows a read-only `gh api` and refuses a mutating one', async () => {
+	const call = args => gh.tools.get('gh_read').run({input: {args}});
+	// GET (implicit or explicit) is a read.
+	assert.equal((await call(['api', 'repos/nntoan/proflow/contents/docs'])).ok, true);
+	assert.equal((await call(['api', '--method', 'GET', 'user'])).ok, true);
+	assert.equal((await call(['api', '--method=GET', 'user'])).ok, true);
+	// Anything that can mutate is not.
+	assert.equal((await call(['api', '--method=POST', 'repos/x/y/issues'])).ok, false);
+	assert.equal((await call(['api', '-X', 'POST', 'repos/x/y/issues'])).ok, false);
+	assert.equal((await call(['api', '-X', 'DELETE', 'repos/x/y'])).ok, false);
+	// Field flags imply a POST, even with no method given.
+	assert.equal((await call(['api', '-f', 'title=x', 'repos/x/y/issues'])).ok, false);
+	assert.equal((await call(['api', '--input', 'payload.json', 'repos/x/y/issues'])).ok, false);
+	// And it still refuses everything else that is not on the allowlist.
+	assert.equal((await call(['pr', 'create', '--title', 'x'])).ok, false);
+});
+
 check('the installer ships a selected mod and uninstall removes it', () => {
 	const proj = mkdtempSync(join(tmpdir(), 'proflow-mod-'));
 	mkdirSync(join(proj, '.git'));

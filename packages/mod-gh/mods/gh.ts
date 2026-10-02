@@ -40,10 +40,33 @@ export const READ_ONLY = new Set([
 	'status', 'help', 'version',
 ]);
 
+/**
+ * `gh api` is read-only only when it cannot mutate: no explicit write method, and
+ * no field/input flag (which imply a POST). Without this, a read-only repo review
+ * had no route through our tools and fell back to the shell.
+ */
+export function apiIsReadOnly(args: readonly string[]): boolean {
+	const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+	for (let i = 0; i < args.length; i += 1) {
+		const arg = args[i];
+		if (['-f', '--field', '-F', '--raw-field', '--input'].includes(arg)) return false;
+		const inline = /^--method=(.+)$/.exec(arg);
+		if (inline) {
+			if (WRITE_METHODS.has(inline[1].toUpperCase())) return false;
+			continue;
+		}
+		if (arg === '-X' || arg === '--method') {
+			if (WRITE_METHODS.has((args[i + 1] ?? 'GET').toUpperCase())) return false;
+		}
+	}
+	return true;
+}
+
 /** Is `args` a read-only `gh` invocation? */
 export function isReadOnly(args: readonly string[]): boolean {
 	const words = args.filter(token => !token.startsWith('-'));
 	if (words.length === 0) return false;
+	if (words[0] === 'api') return apiIsReadOnly(args);
 	return READ_ONLY.has(words.slice(0, 2).join(' ')) || READ_ONLY.has(words[0]);
 }
 
