@@ -3,3 +3,11 @@ node_modules/
 .codegraph/
 *.log
 .DS_Store
+
+# proflow spec directories: only the specification is versioned. The recon and
+# reflection artifacts (IDEA.md, explore-brief.md, review-log.md, …) are working
+# notes — they stay with the session that produced them, not in git.
+docs/spec/*
+!docs/spec/*/
+docs/spec/*/*
+!docs/spec/*/SPEC.md

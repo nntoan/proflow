@@ -44,13 +44,25 @@ lifecycle sequence. Load it when you are unsure which workflow applies.
 
 ```
 docs/spec/<id>/
-├── SPEC.md            the specification
-├── explore-brief.md   recon findings, assumptions, the interview Q&A
-└── review-log.md      one entry per reflection round
+├── SPEC.md            the specification — the only file meant for version control
+├── explore-brief.md   recon findings, assumptions, the interview Q&A (local)
+└── review-log.md      one entry per reflection round (local)
 ```
 
 `<id>` is the ticket id, else a kebab-case slug, else a version. `/to-plan` and `/build` read this
 directory, and refuse a repository-root `SPEC.md` as canonical.
+
+**Only `SPEC.md` belongs in git.** The recon and reflection artifacts — and a `/brainstorm`
+`IDEA.md` — are working notes: they carry the session's questions, the assumptions and the round-by
+round argument, which is noise in a shared repository. proflow's own `.gitignore` keeps them out, and
+these four lines do the same for a project:
+
+```
+docs/spec/*
+!docs/spec/*/
+docs/spec/*/*
+!docs/spec/*/SPEC.md
+```
 
 ### The reflection loop
 
