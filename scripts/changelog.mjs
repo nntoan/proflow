@@ -12,8 +12,7 @@
 // no commit links.
 
 import {execFileSync} from 'node:child_process';
-import {writeFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {realpathSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 /** Section order and titles. `chore`/`docs`/`test` are kept: this history is
@@ -177,6 +176,15 @@ function main(argv) {
 	}
 }
 
-const invokedDirectly =
-	process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
-if (invokedDirectly) main(process.argv.slice(2));
+/** True when this file is the process entry point. The paths are *resolved* first:
+ *  an invocation through a symlink (a bin shim) would otherwise exit silently. */
+function invokedDirectly() {
+	if (!process.argv[1]) return false;
+	try {
+		return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+	} catch {
+		return false;
+	}
+}
+
+if (invokedDirectly()) main(process.argv.slice(2));
