@@ -221,7 +221,7 @@ check('the cache segment reads the fields the harness actually sends', () => {
 
 	assert.match(status, /deepseek-v4\.1-flash\s*\u001b\[2m\(high\)\u001b\[0m/, `got: ${status}`);
 	assert.match(status, /\u001b\[32m99\.98%\u001b\[0m/, 'the turn rate is green at 99.98%');
-	assert.match(status, /ctx 746k \(74\.6%\)/, 'context is tokens plus the share of the known 1M window');
+	assert.match(status, /\u001b\[2mctx 746k \(74\.6%\)\u001b\[0m/, 'a healthy context stays grey, not green');
 	assert.match(status, /\u001b\[2mavg\u001b\[0m \u001b\[32m99\.98%\u001b\[0m/, 'the average is the session aggregate');
 	assert.doesNotMatch(status, /session/i, 'the label is avg — never "session"');
 	// 745344×0.003 + 159×0.15 + 3747×0.6, per million = the harness's own figure.

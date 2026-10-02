@@ -585,8 +585,8 @@ export default function (cmd: ModApi): void {
 	const windowFor = (id: string | null): number | null => (id ? CONTEXT_WINDOWS[id] ?? null : null);
 	const cacheColour = (hit: number): string =>
 		hit >= footer.cache.warnBelow ? GREEN : hit >= footer.cache.alertBelow ? YELLOW : RED;
-	const contextColour = (pct: number): string =>
-		pct < footer.context.warnAbove ? GREEN : pct < footer.context.alertAbove ? YELLOW : RED;
+	// Only ever called at or above the warn threshold — a healthy context is grey.
+	const contextColour = (pct: number): string => (pct < footer.context.alertAbove ? YELLOW : RED);
 	const count = (tokens: number): string => (tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens));
 
 	// The session aggregate is durable: it is seeded from the session's own
@@ -621,7 +621,11 @@ export default function (cmd: ModApi): void {
 			const window = windowFor(model);
 			const pct = window ? (contextTokens / window) * 100 : null;
 			const label = `ctx ${count(contextTokens)}`;
-			parts.push(pct === null ? label : paint(`${label} (${pct.toFixed(1)}%)`, contextColour(pct)));
+			// Quiet by default: the context figure takes a colour only once it is
+			// worth noticing, so a healthy session stays grey and unremarkable.
+			if (pct === null) parts.push(label);
+			else if (pct < footer.context.warnAbove) parts.push(dim(`${label} (${pct.toFixed(1)}%)`));
+			else parts.push(paint(`${label} (${pct.toFixed(1)}%)`, contextColour(pct)));
 		}
 		if (cacheTurn !== null) {
 			parts.push(`${dim('cache')} ${paint(`${cacheTurn.toFixed(2)}%`, cacheColour(cacheTurn))}`);
