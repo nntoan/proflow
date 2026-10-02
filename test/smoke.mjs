@@ -97,8 +97,8 @@ const guard = command => hooksOf().beforeToolCall({toolCallId: 't', toolName: 's
 const suite = [];
 const check = (name, fn) => suite.push([name, fn]);
 
-check('registers /proflow and /proflow-rates', () => {
-	assert.deepEqual([...commands.keys()], ['proflow', 'proflow-rates']);
+check('registers /proflow and nothing else', () => {
+	assert.deepEqual([...commands.keys()], ['proflow']);
 	assert.deepEqual(
 		[...flags.keys()].sort(),
 		['colour', 'deepseek', 'deepseek-holidays', 'deepseek-model', 'deepseek-window', 'footer', 'guard', 'next-step'],

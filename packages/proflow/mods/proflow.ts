@@ -770,7 +770,16 @@ export default function (cmd: ModApi): void {
 	cmd.addCommand({
 		name: 'proflow',
 		description: 'Show the proflow guard, footer, and config status',
-		handler: () => {
+		argumentHint: '[rates]',
+		handler: ({args}: {args?: string} = {}) => {
+			if (String(args ?? '').trim() === 'rates') {
+				const result = refreshRates();
+				return {
+					message: result
+						? `proflow rates — wrote ${result.count} models to ${result.file}`
+						: 'proflow rates — no installed Command Code registry found; the footer reads it live instead.',
+				};
+			}
 			const config = [
 				join(homedir(), '.commandcode', 'proflow.jsonc'),
 				join(cmd.cwd, '.commandcode', 'proflow.jsonc'),
@@ -787,19 +796,6 @@ export default function (cmd: ModApi): void {
 					`  rates        ${existsSync(join(homedir(), '.commandcode', 'rates.json')) ? 'snapshot' : 'live registry'}`,
 					`  config       ${config || '(none — run the installer to create one)'}`,
 				].join('\n'),
-			};
-		},
-	});
-
-	cmd.addCommand({
-		name: 'proflow-rates',
-		description: 'Refresh the rate snapshot from the installed Command Code registry',
-		handler: () => {
-			const result = refreshRates();
-			return {
-				message: result
-					? `proflow rates — wrote ${result.count} models to ${result.file}`
-					: 'proflow rates — no installed Command Code registry found; the footer reads it live instead.',
 			};
 		},
 	});
