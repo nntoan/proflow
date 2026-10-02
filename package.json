@@ -1,62 +1,20 @@
 {
-	"name": "@nntoan/proflow",
-	"version": "0.1.1",
-	"description": "Command Code mod that deep-integrates addyosmani/agent-skills — 25 engineering skills plus the /brainstorm, /spec, /to-plan, /build, /test, /to-review and /ship lifecycle commands.",
+	"name": "proflow-workspace",
+	"version": "0.1.2",
+	"private": true,
+	"description": "Development workspace for proflow — the installer, the agent-skills payload, and the optional tool mods.",
 	"license": "MIT",
-	"type": "commonjs",
-	"author": "Toan Nguyen",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/nntoan/proflow.git"
-	},
-	"homepage": "https://github.com/nntoan/proflow#readme",
-	"bugs": {
-		"url": "https://github.com/nntoan/proflow/issues"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"commandcode": {
-		"mods": [
-			"./mods/proflow.ts"
-		]
-	},
-	"bin": {
-		"proflow": "scripts/install.mjs"
-	},
-	"files": [
-		"mods/",
-		"commands/",
-		"skills/",
-		"references/",
-		"agents/",
-		"docs/agents.md",
-		"components/",
-		"hooks/",
-		"scripts/install.mjs",
-		"README.md",
-		"LICENSE",
-		"LICENSE.agent-skills",
-		"VENDOR.json"
+	"workspaces": [
+		"packages/*"
 	],
 	"scripts": {
-		"test": "node --disable-warning=ExperimentalWarning test/smoke.mjs && node --disable-warning=ExperimentalWarning test/vendor.mjs && node --disable-warning=ExperimentalWarning test/install.mjs",
 		"sync": "node scripts/sync-upstream.mjs",
 		"sync:magento2": "node scripts/sync-magento2.mjs",
-		"proflow:install": "node scripts/install.mjs install",
-		"proflow:uninstall": "node scripts/install.mjs uninstall",
-		"release:check": "npm test && npm pack --dry-run",
-		"prepublishOnly": "npm test"
+		"proflow:install": "node packages/cli/scripts/install.mjs install",
+		"proflow:uninstall": "node packages/cli/scripts/install.mjs uninstall",
+		"test": "node --disable-warning=ExperimentalWarning test/run.mjs",
+		"release:check": "npm test && npm pack --dry-run --workspaces"
 	},
-	"keywords": [
-		"commandcode",
-		"commandcode-mod",
-		"agent-skills",
-		"proflow",
-		"spec-driven-development",
-		"test-driven-development",
-		"code-review"
-	],
 	"engines": {
 		"node": ">=22.13"
 	}
