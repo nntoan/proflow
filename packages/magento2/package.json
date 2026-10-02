@@ -1,6 +1,6 @@
 {
 	"name": "@ultra-cmd/magento2",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "Magento 2 engineering toolkit for Command Code — namespaced m2-* skills and commands, two personas, and the docs-path guard hook.",
 	"license": "MIT",
 	"type": "commonjs",
