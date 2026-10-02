@@ -114,16 +114,35 @@ Check the version in the root `package.json`, the six package manifests, and
 
 ### B2. Bump and tag
 
-One command bumps the root and every workspace, without committing or tagging:
-
 ```bash
 npm version 0.1.3 --workspaces --include-workspace-root --no-git-tag-version
 git add -A && git commit -m "chore(release): 0.1.3"
-git tag v0.1.3
+git tag -a v0.1.3 -m "proflow 0.1.3"
 git push --follow-tags
 ```
 
 The tag must match the **root** version — the workflow fails otherwise.
+
+**Why `--no-git-tag-version`, and your own commit.** Without it, `npm version
+--workspaces` makes a commit containing only the *root* `package.json` and leaves
+every workspace manifest dirty. The tag would then point at a commit where
+`packages/*/package.json` still say the old version, and the workflow would
+publish nothing. `--no-git-tag-version` plus `git add -A` puts all seven manifests
+and the lockfile in one commit.
+
+**Why `-a -m` on the tag.** `git push --follow-tags` pushes the branch **and any
+annotated tag** pointing into the commits being pushed — nothing else. It never
+creates a tag. A *lightweight* tag is silently skipped, and since the release
+workflow triggers on a tag push, the release would simply never run. `git tag
+v0.1.3 -a -m …` is annotated (and signed, with this machine's `tag.gpgsign=true`;
+a bare `git tag v0.1.3` also produces an annotated tag there but blocks on an
+editor for the message, which is useless in a script).
+
+If you ever do create a lightweight tag, push it by name:
+
+```bash
+git push origin v0.1.3        # the only way a lightweight tag reaches the remote
+```
 
 ### B3. What the tag does
 
