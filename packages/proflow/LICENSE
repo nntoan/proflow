@@ -22,12 +22,6 @@ SOFTWARE.
 
 ---
 
-Vendored third-party content keeps its own license, alongside the package that
-carries it:
-
-- The bundled Agent Skills content (skills/, references/, agents/, docs/agents.md)
-  is vendored from https://github.com/addyosmani/agent-skills and is MIT licensed:
-  see LICENSE.agent-skills.
-- The optional Magento 2 pack is vendored from
-  https://github.com/muon-m2/magento2-tools and is MIT licensed:
-  see LICENSE.magento2.
+The bundled Agent Skills content (skills/, references/, agents/, docs/agents.md)
+is vendored from https://github.com/addyosmani/agent-skills and is MIT licensed:
+see LICENSE.agent-skills.
