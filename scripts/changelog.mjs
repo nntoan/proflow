@@ -77,14 +77,13 @@ export function previousTag(to) {
 	}
 }
 
-function rootCommit() {
-	return git(['rev-list', '--max-parents=0', 'HEAD']).split('\n').pop();
-}
-
-/** Commits in `from..to`, newest first, merges skipped. */
+/** Commits in `from..to`, newest first, merges skipped. With `from = null` the
+ *  whole history up to `to` is used — a first release has no earlier boundary,
+ *  and `root..to` would wrongly exclude the root commit itself. */
 export function readCommits(from, to) {
 	const format = '%H%x1f%s%x1f%b%x1e';
-	const raw = git(['log', '--no-merges', `--pretty=format:${format}`, `${from}..${to}`]);
+	const range = from ? `${from}..${to}` : to;
+	const raw = git(['log', '--no-merges', `--pretty=format:${format}`, range]);
 	return raw
 		.split('\x1e')
 		.map(chunk => chunk.replace(/^\n+/, ''))
@@ -150,10 +149,12 @@ function main(argv) {
 	}
 
 	const to = opts.to ?? 'HEAD';
-	let from = opts.from ?? previousTag(to) ?? rootCommit();
-	// `git describe` excludes the release tag itself; an explicit `--from` equal
-	// to `--to` would produce an empty range, which is never what is wanted.
-	if (from === to) from = previousTag(to) ?? rootCommit();
+	// `git describe` excludes the release tag itself, so `--to v0.1.2` resolves to
+	// `v0.1.1`. A first release has no previous tag: `anchor` stays null and the
+	// notes cover everything up to `to`. An explicit `--from` equal to `--to`
+	// would be an empty range, so it re-detects instead.
+	let anchor = opts.from ?? previousTag(to) ?? null;
+	if (anchor === to) anchor = previousTag(to) ?? null;
 
 	let repo = opts.repo ?? null;
 	if (!repo) {
@@ -164,11 +165,13 @@ function main(argv) {
 		}
 	}
 
-	const commits = readCommits(from, to);
-	const markdown = render(commits, {repo, from, to});
+	const commits = readCommits(anchor, to);
+	// A first release has no previous tag: there is nothing to compare against,
+	// so the footer is dropped rather than pointing at a bare commit sha.
+	const markdown = render(commits, {repo, from: anchor, to});
 	if (opts.output) {
 		writeFileSync(opts.output, markdown);
-		console.log(`wrote ${opts.output} — ${commits.length} commit(s), ${from}..${to}`);
+		console.log(`wrote ${opts.output} — ${commits.length} commit(s), ${anchor ? `${anchor}..${to}` : `everything up to ${to}`}`);
 	} else {
 		process.stdout.write(markdown);
 	}

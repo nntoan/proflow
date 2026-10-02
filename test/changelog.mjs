@@ -131,6 +131,15 @@ check('end to end: it finds the previous tag and groups the real commits', () =>
 	assert.match(out, /## ✅ Tests\n\n- third/);
 	assert.doesNotMatch(out, /first/, 'the previous release must be excluded');
 	assert.match(out, /v1\.0\.0\.\.\.v1\.1\.0/);
+
+	// A first release has no previous tag: no compare footer, but the commits
+	// up to that tag are still listed.
+	const first = execFileSync(process.execPath, [join(ROOT, 'scripts', 'changelog.mjs'), '--to', 'v1.0.0'], {
+		cwd: proj,
+		encoding: 'utf8',
+	});
+	assert.match(first, /## 🚀 Features\n\n- first/);
+	assert.doesNotMatch(first, /Full changelog/, 'a first release has nothing to compare against');
 	rmSync(proj, {recursive: true, force: true});
 });
 
