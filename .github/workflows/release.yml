@@ -1,29 +1,70 @@
 name: Release
 
-# Publishing is tag-driven and uses npm **trusted publishing** (OIDC): there is no
-# NPM_TOKEN, and no long-lived secret anywhere in this repository. The tag must
-# match the root package.json version; every workspace package is then published
-# if that exact version is not on npm yet, so re-running a partial release is safe.
+# Triggered by a tag push — the tag names the release. Two deliberately separate
+# jobs:
 #
-# One-time setup, for **each** of the six packages on npmjs.com → the package →
-# Settings → Trusted publishing:
-#   GitHub Actions · Organization/user `nntoan` · Repository `proflow`
-#   Workflow filename `release.yml` · and tick **Allow npm publish**
-# (configurations created after 2026-09-03 are stage-only by default, where only
-# `npm stage publish` is allowed). See docs/RELEASING.md.
+#   release   always runs: it builds the notes from the conventional commits
+#             between the previous tag and this one, and creates the GitHub
+#             release. A *retroactive* tag (backfilling a release that predates
+#             this workflow) is handled here too.
+#   publish   runs only when the tag matches the root package.json version, i.e.
+#             for a release of the current tree, over npm trusted publishing
+#             (OIDC) — there is no NPM_TOKEN anywhere in this repository.
+#
+# Manifest and provenance plumbing it relies on is in docs/RELEASING.md.
 
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write # create the GitHub release
-  id-token: write # OIDC — the npm CLI exchanges this for a short-lived publish token
+  contents: read
 
 jobs:
-  publish:
-    # Trusted publishing requires a GitHub-hosted runner (self-hosted is not supported).
+  release:
+    name: GitHub release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    outputs:
+      publishable: ${{ steps.check.outputs.publishable }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the changelog needs the full history and the previous tag
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Is this tag the current version?
+        id: check
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" = "$version" ]; then
+            echo "publishable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publishable=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$GITHUB_REF_NAME is a retroactive tag (the tree is at $version) — creating the release only, not publishing."
+          fi
+
+      - name: Build the release notes from the commits
+        run: node scripts/changelog.mjs --to "$GITHUB_REF_NAME" --output RELEASE_NOTES.md
+
+      - name: Create the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+
+  publish:
+    name: Publish to npm
+    needs: release
+    if: needs.release.outputs.publishable == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC — exchanged for a short-lived publish token
     steps:
       - uses: actions/checkout@v4
 
@@ -38,15 +79,6 @@ jobs:
         run: |
           npm --version
           node -e "const v=process.argv[1].split('.').map(Number); if (v[0]<11 || (v[0]===11 && v[1]<5)) { console.error('npm '+process.argv[1]+' is too old — trusted publishing needs >= 11.5.1'); process.exit(1) }" "$(npm --version)"
-
-      - name: Tag must match the root version
-        run: |
-          version=$(node -p "require('./package.json').version")
-          tag="${GITHUB_REF_NAME#v}"
-          if [ "$version" != "$tag" ]; then
-            echo "::error::tag v$tag does not match the root package.json version $version — bump with 'npm version $tag'"
-            exit 1
-          fi
 
       - name: Install workspaces
         run: npm ci
@@ -78,8 +110,3 @@ jobs:
               npm publish --provenance --access public --workspace "$name"
             fi
           done
-
-      - name: GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true

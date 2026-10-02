@@ -146,17 +146,57 @@ git push origin v0.1.3        # the only way a lightweight tag reaches the remot
 
 ### B3. What the tag does
 
-1. asserts `npm >= 11.5.1` (the OIDC requirement — Node 24's bundled npm satisfies it);
-2. verifies the tag against the root version;
-3. runs the tests;
-4. publishes **every workspace package whose exact version is not on npm yet** — payloads first,
-   `@nntoan/proflow` last — each authenticated by its own short-lived OIDC token;
-5. cuts a GitHub release with generated notes.
+The tag push starts two jobs:
 
-Re-running is safe: anything already published is skipped. Provenance is generated automatically under
-trusted publishing, and the workflow passes `--provenance` anyway — that is redundant while the repo
-and packages are public, but it makes a release **fail** if an attestation cannot be produced instead
-of publishing silently unsigned.
+1. **release** — *always* runs. It builds the notes from the conventional commits between the previous
+   `v*` tag and this one (`scripts/changelog.mjs`) and creates the GitHub release with them. Because it
+   is unconditional, a **retroactive** tag works too: tagging a commit that predates this workflow
+   creates its release (and its changelog) without touching the registry.
+2. **publish** — runs **only when the tag matches the root `package.json` version**, i.e. for a release
+   of the current tree. It asserts `npm >= 11.5.1`, installs the workspaces, runs the tests, then
+   publishes every workspace package whose exact version is not on npm yet — payloads first,
+   `@nntoan/proflow` last — each authenticated by its own short-lived OIDC token.
+
+Re-running is safe: anything already published is skipped.
+
+### The release notes
+
+`scripts/changelog.mjs` groups the commits since the previous tag by conventional type, with the scope
+in bold and a link to each commit:
+
+```
+## 🚀 Features
+
+- **cli:** rewrite the installer as a native-only provisioning wizard ([`14a9374`](…))
+
+## 🐛 Bug Fixes
+
+- …
+
+**Full changelog**: [`v0.1.1...v0.1.2`](https://github.com/nntoan/proflow/compare/v0.1.1...v0.1.2)
+```
+
+Sections: Features, Bug Fixes, Performance, Refactoring, Documentation, Tests, Build, CI, Dependencies,
+Reverts, Style, Chores — and Other for subjects that are not conventional commits. `chore`, `docs` and
+`test` are deliberately **kept**: this history is built from atomic commits, and hiding them (as
+release-please does by default) would leave most releases looking empty. A `!` after the type, or a
+`BREAKING CHANGE:` footer, is lifted into a ⚠️ Breaking Changes section at the top — and stays in its
+type section, so that list remains complete.
+
+Preview the notes before tagging:
+
+```bash
+node scripts/changelog.mjs --to v0.1.3      # writes to stdout
+node scripts/changelog.mjs --to v0.1.3 --output RELEASE_NOTES.md
+```
+
+With no `--from`, the previous `v*` tag reachable from `--to` is used (the tag being released is
+excluded), falling back to the first commit. The repository slug comes from `origin`; pass `--repo
+owner/name` to override it, or run somewhere without a remote and the entries simply carry no links.
+
+Provenance is generated automatically under trusted publishing, and the workflow passes `--provenance`
+anyway — that is redundant while the repo and packages are public, but it makes a release **fail** if
+an attestation cannot be produced instead of publishing silently unsigned.
 
 ---
 
