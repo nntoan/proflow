@@ -6,7 +6,7 @@
 // Run: node test/install.mjs
 
 import assert from 'node:assert/strict';
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -155,6 +155,47 @@ check('the CLI defaults to help, reports --version, and never installs bare', ()
 	spawnSync(process.execPath, [INSTALLER], {cwd: empty, encoding: 'utf8'});
 	assert.deepEqual(readdirSync(empty), [], 'a bare invocation must not touch the cwd');
 	rmSync(empty, {recursive: true, force: true});
+});
+
+check('the CLI runs when invoked through a bin symlink (how npm runs it)', () => {
+	// npm runs a bin through `node_modules/.bin/<name>` — a *symlink*. Comparing
+	// argv[1] with import.meta.url without resolving both makes the CLI exit
+	// silently, which is the only way users ever invoke it (`npx @nntoan/proflow`).
+	const binDir = join(proj, 'node_modules', '.bin');
+	mkdirSync(binDir, {recursive: true});
+	const link = join(binDir, 'proflow');
+	rmSync(link, {force: true});
+	symlinkSync(INSTALLER, link);
+
+	const version = spawnSync(process.execPath, [link, '--version'], {encoding: 'utf8'});
+	assert.equal(version.stdout.trim(), pkg.version, 'a symlinked bin must still report the version');
+
+	const help = spawnSync(process.execPath, [link], {encoding: 'utf8'});
+	assert.match(help.stdout, /proflow install/, 'a symlinked bin must still print help');
+});
+
+check('the wizard renders on a TTY', () => {
+	// The wizard is the default interactive path. Assert it actually renders when
+	// stdin and stdout are a real terminal, allocated by `script`. The wizard waits
+	// for input, so the timeout kill is expected — only its output matters.
+	const command =
+		process.platform === 'darwin'
+			? ['script', ['-q', '/dev/null', process.execPath, INSTALLER, 'install']]
+			: ['script', ['-qec', `${process.execPath} ${INSTALLER} install`, '/dev/null']];
+	// `script` needs a TTY on its own stdin too: with a pipe it exits immediately and
+	// prints nothing, so stdin is inherited. The wizard then waits for input, and the
+	// timeout kill is expected — only the rendered output is checked.
+	const probe = spawnSync(command[0], command[1], {
+		cwd: proj,
+		encoding: 'utf8',
+		stdio: ['inherit', 'pipe', 'pipe'],
+		timeout: 5000,
+	});
+	if (probe.error?.code === 'ENOENT' || !probe.stdout) {
+		console.log('  (pty check skipped — needs an interactive terminal, or no `script`)');
+		return;
+	}
+	assert.match(probe.stdout, /Command Code setup/, 'the wizard must render on a TTY');
 });
 
 check('a non-TTY run without --yes refuses instead of installing', () => {

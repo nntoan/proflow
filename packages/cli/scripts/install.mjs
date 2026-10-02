@@ -18,7 +18,7 @@
 //                  package directory.
 
 import {spawnSync} from 'node:child_process';
-import {cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {basename, dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -639,6 +639,20 @@ async function main(argv) {
 	}
 }
 
-const invokedDirectly =
-	process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
-if (invokedDirectly) await main(process.argv.slice(2));
+/**
+ * True when this file is the process entry point. The paths must be *resolved*
+ * before comparing: npm runs a bin through a symlink (`node_modules/.bin/proflow`),
+ * so `argv[1]` is the link and `import.meta.url` is its target — a naive string
+ * comparison fails and the CLI exits silently, which is the only way users invoke
+ * it (`npx @nntoan/proflow`).
+ */
+function invokedDirectly() {
+	if (!process.argv[1]) return false;
+	try {
+		return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+	} catch {
+		return false;
+	}
+}
+
+if (invokedDirectly()) await main(process.argv.slice(2));
