@@ -1,0 +1,47 @@
+{
+	"name": "@ultra-cmd/proflow",
+	"version": "0.1.2",
+	"description": "proflow for Command Code — 26 engineering skills, nine lifecycle commands, shared reference checklists, specialist personas, and the proflow harness mod.",
+	"license": "MIT",
+	"type": "commonjs",
+	"author": "Toan Nguyen",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nntoan/proflow.git",
+		"directory": "packages/proflow"
+	},
+	"homepage": "https://github.com/nntoan/proflow#readme",
+	"bugs": {
+		"url": "https://github.com/nntoan/proflow/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"commandcode": {
+		"mods": [
+			"./mods/proflow.ts"
+		]
+	},
+	"files": [
+		"commands/",
+		"skills/",
+		"references/",
+		"agents/",
+		"docs/agents.md",
+		"mods/",
+		"proflow.jsonc",
+		"proflow.schema.json",
+		"LICENSE",
+		"LICENSE.agent-skills",
+		"VENDOR.json"
+	],
+	"keywords": [
+		"commandcode",
+		"commandcode-mod",
+		"agent-skills",
+		"proflow",
+		"spec-driven-development",
+		"test-driven-development",
+		"code-review"
+	]
+}

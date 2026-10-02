@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/addyosmani/agent-skills",
+  "repo": "/private/tmp/commandcode-501/-Users-nntoan-Workspace-data-agentic-proflow/4d15df2c-8697-49a3-84c1-bd23069f994c/scratchpad/agent-skills-upstream",
+  "ref": "main",
+  "commit": "2686b620fc1fed2e8f60c704839c766b8594c6b6",
+  "version": "0.6.11",
+  "patches": [
+    "skills/spec-driven-development/SKILL.md",
+    "commands/spec.md",
+    "commands/to-plan.md",
+    "commands/build.md",
+    "commands/test.md",
+    "commands/to-review.md",
+    "commands/ship.md",
+    "commands/constraints.md",
+    "commands/code-simplify.md"
+  ],
+  "commandRenames": {
+    "plan": "to-plan",
+    "review": "to-review"
+  },
+  "syncedAt": "2026-10-01T11:42:54.469Z"
+}
