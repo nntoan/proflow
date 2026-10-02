@@ -73,7 +73,10 @@ jobs:
           # Node 24 bundles npm 11. Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false # never cache in release builds
+          # No `cache:` input on purpose: caching in setup-node is opt-in, and a
+          # release build must not restore one. (An earlier revision passed
+          # `package-manager-cache: false`, which this action major does not
+          # accept — the runner warned and ignored it. The behaviour is the same.)
 
       - name: npm must support trusted publishing
         run: |
