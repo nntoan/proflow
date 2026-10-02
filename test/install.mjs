@@ -1,19 +1,20 @@
 #!/usr/bin/env node
-// Installer test: provisions into a throwaway project and asserts the layout,
-// idempotency, collision protection, and clean uninstall — no Command Code needed.
+// Installer test: provisions into a throwaway project and asserts the native
+// layout, idempotency, collision protection, the magento pack, and a clean
+// uninstall — no Command Code needed.
 //
 // Run: node test/install.mjs
 
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const INSTALLER = join(ROOT, 'scripts', 'install.mjs');
-const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+const INSTALLER = join(ROOT, 'packages', 'cli', 'scripts', 'install.mjs');
+const pkg = JSON.parse(readFileSync(join(ROOT, 'packages', 'cli', 'package.json'), 'utf8'));
 
 const proj = mkdtempSync(join(tmpdir(), 'proflow-install-'));
 mkdirSync(join(proj, '.git'));
@@ -21,7 +22,13 @@ const cc = join(proj, '.commandcode');
 const manifestPath = join(cc, 'proflow.manifest.json');
 
 const run = (...args) =>
-	execFileSync(process.execPath, [INSTALLER, ...args, '--project', proj], {encoding: 'utf8'});
+	spawnSync(process.execPath, [INSTALLER, ...args, '--project', proj], {encoding: 'utf8'});
+const ok = result => {
+	assert.equal(result.status, 0, `installer failed: ${result.stderr || result.stdout}`);
+	return result.stdout;
+};
+const manifest = () => JSON.parse(readFileSync(manifestPath, 'utf8'));
+const counts = dir => readdirSync(join(cc, dir)).length;
 
 const checks = [];
 const check = (name, fn) => {
@@ -29,77 +36,80 @@ const check = (name, fn) => {
 	checks.push(name);
 };
 
-check('install provisions mod, skills, agents, and a manifest', () => {
-	run('install');
-	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'mods', 'proflow.ts')));
-	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'commands', 'spec.md')));
-	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'skills', 'test-driven-development', 'SKILL.md')));
-	assert.equal(readdirSync(join(cc, 'skills')).length, 25);
-	assert.equal(readdirSync(join(cc, 'agents')).length, 5);
-	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-	assert.equal(manifest.version, pkg.version);
-	assert.equal(manifest.skills.length, 25);
-	assert.ok(manifest.agents.includes('spec-reviewer'));
+check('install provisions the native surfaces, the harness mod, and a manifest', () => {
+	ok(run('install', '--yes'));
+	assert.equal(counts('commands'), 10);
+	assert.equal(counts('skills'), 26);
+	assert.equal(counts('references'), 7);
+	assert.equal(counts('agents'), 5);
+	assert.equal(counts('docs'), 1);
+	assert.ok(existsSync(join(cc, 'mods', 'proflow.ts')), 'the harness mod must be installed');
+	assert.ok(existsSync(join(cc, 'skills', 'spec-reflection', 'SKILL.md')), 'spec-reflection must install');
+
+	const m = manifest();
+	assert.equal(m.version, pkg.version);
+	assert.equal(m.commands.length, 10);
+	assert.equal(m.skills.length, 26);
+	assert.equal(m.references.length, 7);
+	assert.ok(m.agents.includes('spec-reviewer'));
+	assert.deepEqual(m.mods, ['proflow.ts']);
 });
 
-check('install is idempotent and re-runs cleanly', () => {
-	run('install');
-	assert.equal(readdirSync(join(cc, 'skills')).length, 25);
-	assert.ok(existsSync(join(cc, 'mods', 'proflow', 'package.json')));
+check('the installed commands are the proflow set', () => {
+	const names = readdirSync(join(cc, 'commands')).sort();
+	for (const name of ['brainstorm.md', 'spec.md', 'to-plan.md', 'build.md', 'test.md', 'to-review.md', 'ship.md']) {
+		assert.ok(names.includes(name), `missing ${name}`);
+	}
+	assert.ok(!names.includes('plan.md'));
+});
+
+check('install is idempotent and refreshes its own files', () => {
+	writeFileSync(join(cc, 'mods', 'proflow.ts'), 'STALE');
+	writeFileSync(join(cc, 'docs', 'agents.md'), 'STALE');
+	const out = ok(run('install', '--yes'));
+	assert.doesNotMatch(out, /skipping/, 'a re-install must not skip its own files');
+	assert.notEqual(readFileSync(join(cc, 'mods', 'proflow.ts'), 'utf8'), 'STALE');
+	assert.notEqual(readFileSync(join(cc, 'docs', 'agents.md'), 'utf8'), 'STALE');
+	assert.equal(counts('skills'), 26);
 });
 
 check('a foreign skill of the same name is not clobbered', () => {
-	// Make one provisioned skill look foreign: sentinel it, drop it from the manifest.
 	const sentinel = join(cc, 'skills', 'idea-refine', 'SKILL.md');
 	writeFileSync(sentinel, 'FOREIGN');
-	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-	manifest.skills = manifest.skills.filter(name => name !== 'idea-refine');
-	writeFileSync(manifestPath, JSON.stringify(manifest));
+	const m = manifest();
+	m.skills = m.skills.filter(name => name !== 'idea-refine');
+	writeFileSync(manifestPath, JSON.stringify(m));
 
-	const out = run('install');
+	const out = ok(run('install', '--yes'));
 	assert.match(out, /idea-refine.*skipping/i);
 	assert.equal(readFileSync(sentinel, 'utf8'), 'FOREIGN');
 
-	run('install', '--force');
+	ok(run('install', '--yes', '--force'));
 	assert.notEqual(readFileSync(sentinel, 'utf8'), 'FOREIGN');
 });
 
-check('uninstall removes proflow files and leaves foreign ones', () => {
+check('uninstall removes what proflow wrote and leaves foreign files', () => {
 	const keep = join(cc, 'skills', 'foreign-skill');
 	mkdirSync(keep, {recursive: true});
 	writeFileSync(join(keep, 'SKILL.md'), 'keep me');
 
-	run('uninstall');
-	assert.ok(!existsSync(join(cc, 'mods', 'proflow')));
+	ok(run('uninstall'));
 	assert.ok(!existsSync(manifestPath));
+	assert.ok(!existsSync(join(cc, 'commands', 'spec.md')));
 	assert.ok(!existsSync(join(cc, 'skills', 'idea-refine')));
-	assert.ok(!existsSync(join(cc, 'agents', 'code-reviewer.md')));
-	assert.ok(existsSync(join(keep, 'SKILL.md')), 'foreign skill must survive uninstall');
+	assert.ok(!existsSync(join(cc, 'mods', 'proflow.ts')));
+	assert.ok(!existsSync(join(cc, 'references')));
+	assert.ok(existsSync(join(keep, 'SKILL.md')), 'a foreign skill must survive uninstall');
+
+	assert.match(ok(run('status')), /not installed/i);
 });
 
-check('status reflects an uninstalled scope', () => {
-	const out = run('status');
-	assert.match(out, /not installed/i);
-});
-
-check('--mcp bundles an MCP server and uninstall removes it', () => {
-	run('install', '--mcp', 'codegraph');
-	const mcpFile = join(proj, '.mcp.json');
-	assert.ok(existsSync(mcpFile), '.mcp.json must be written');
-	assert.equal(JSON.parse(readFileSync(mcpFile, 'utf8')).mcpServers.codegraph.command, 'codegraph');
-	assert.deepEqual(JSON.parse(readFileSync(manifestPath, 'utf8')).mcp.servers, ['codegraph']);
-
-	run('uninstall');
-	assert.ok(!JSON.parse(readFileSync(mcpFile, 'utf8')).mcpServers?.codegraph, 'codegraph must be removed');
-});
-
-check('--component magento2 installs its skills, commands, agents, and hook', () => {
-	run('install', '--component', 'magento2');
+check('--magento2 installs the m2 pack and wires the guard hook', () => {
+	ok(run('install', '--yes', '--magento2'));
 	const skills = readdirSync(join(cc, 'skills'));
-	assert.ok(skills.includes('m2-fix'), 'm2-fix skill missing');
 	assert.equal(skills.filter(name => name.startsWith('m2-')).length, 36);
 	assert.equal(readdirSync(join(cc, 'commands')).filter(n => n.startsWith('m2-')).length, 18);
-	assert.ok(existsSync(join(cc, 'agents', 'm2-reviewer.md')), 'm2-reviewer agent missing');
+	assert.ok(existsSync(join(cc, 'agents', 'm2-reviewer.md')));
 	assert.ok(existsSync(join(cc, 'hooks', 'm2', 'guard-docs-path.sh')));
 
 	const settings = JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8'));
@@ -107,19 +117,18 @@ check('--component magento2 installs its skills, commands, agents, and hook', ()
 		settings.hooks.PreToolUse.some(g => (g.hooks ?? []).some(h => /guard-docs-path\.sh/.test(h.command))),
 		'the guard hook must be wired into settings.json',
 	);
-	assert.equal(JSON.parse(readFileSync(manifestPath, 'utf8')).components.magento2.skills.length, 36);
+	assert.equal(manifest().magento2.skills.length, 36);
 
-	run('uninstall');
+	ok(run('uninstall'));
 	assert.ok(!existsSync(join(cc, 'skills', 'm2-fix')));
 	assert.ok(!existsSync(join(cc, 'hooks')), 'the hook dir must be removed');
-	const after = existsSync(join(cc, 'settings.json')) ? JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8')) : {};
-	assert.ok(!after.hooks, 'the hook entry must be removed from settings.json');
+	assert.ok(!existsSync(join(cc, 'settings.json')), 'a settings.json we created must not be left empty');
 });
 
 check('every vendored magento skill has a parseable description', () => {
-	// Command Code drops a skill whose `description:` is a plain multi-line
-	// scalar containing ": " — assert the sync normalised them all.
-	const dir = join(ROOT, 'components', 'magento2', 'skills');
+	// Command Code drops a skill whose `description:` is a plain multi-line scalar
+	// containing ": " — assert the sync normalised them all.
+	const dir = join(ROOT, 'packages', 'magento2', 'skills');
 	const bad = [];
 	for (const name of readdirSync(dir)) {
 		const file = join(dir, name, 'SKILL.md');
@@ -130,38 +139,35 @@ check('every vendored magento skill has a parseable description', () => {
 			bad.push(`${name}: no description`);
 			continue;
 		}
-		if (/^description:\s*(>[+-]?|\|[+-]?)\s*$/.test(lines[i])) continue; // block scalar
-		if (/^description:\s*\S/.test(lines[i]) && !/^\s+\S/.test(lines[i + 1] ?? '')) continue; // single line
+		if (/^description:\s*(>[+-]?|\|[+-]?)\s*$/.test(lines[i])) continue;
+		if (/^description:\s*\S/.test(lines[i]) && !/^\s+\S/.test(lines[i + 1] ?? '')) continue;
 		bad.push(`${name}: ${lines[i]}`);
 	}
 	assert.deepEqual(bad, [], `unparseable description(s): ${bad.join('; ')}`);
 });
 
-check('--mcp codegraph also wires permissions and the CodeGraph hook', () => {
-	run('install', '--mcp', 'codegraph');
-	const settings = JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8'));
-	assert.ok(settings.permissions.allow.includes('mcp__codegraph__*'));
-	assert.ok(settings.permissions.allow.includes('Shell(codegraph *)'));
-	assert.ok(settings.hooks.PreToolUse.some(g => (g.hooks ?? []).some(h => /codegraph-hook\.cjs/.test(h.command))));
-	assert.ok(settings.hooks.PostToolUse.some(g => (g.hooks ?? []).some(h => /codegraph-hook\.cjs/.test(h.command))));
-	assert.ok(existsSync(join(cc, 'hooks', 'codegraph', 'codegraph-hook.cjs')));
+check('the CLI defaults to help, reports --version, and never installs bare', () => {
+	const bare = (...args) => spawnSync(process.execPath, [INSTALLER, ...args], {encoding: 'utf8'});
+	assert.match(bare('--version').stdout, new RegExp(pkg.version.replace(/\./g, '\\.')));
+	assert.match(bare().stdout, /proflow install/);
 
-	run('uninstall');
-	const after = existsSync(join(cc, 'settings.json')) ? JSON.parse(readFileSync(join(cc, 'settings.json'), 'utf8')) : {};
-	assert.ok(!after.hooks?.PreToolUse, 'codegraph hooks must be removed');
-	assert.ok(!after.permissions?.allow, 'codegraph permissions must be removed');
-	assert.ok(!existsSync(join(cc, 'hooks', 'codegraph')));
+	const empty = mkdtempSync(join(tmpdir(), 'proflow-bare-'));
+	spawnSync(process.execPath, [INSTALLER], {cwd: empty, encoding: 'utf8'});
+	assert.deepEqual(readdirSync(empty), [], 'a bare invocation must not touch the cwd');
+	rmSync(empty, {recursive: true, force: true});
 });
 
-check('the CLI defaults to help, reports --version, and never installs bare', () => {
-	const run2 = (...args) => execFileSync(process.execPath, [INSTALLER, ...args], {encoding: 'utf8'});
-	assert.match(run2('--version'), new RegExp(pkg.version.replace(/\./g, '\\.')));
-	assert.match(run2(), /proflow install/); // no subcommand → help, NOT an install
-	assert.match(run2('--help'), /proflow uninstall/);
-	// A bare invocation must not create anything in the cwd.
-	const empty = mkdtempSync(join(tmpdir(), 'proflow-bare-'));
-	execFileSync(process.execPath, [INSTALLER], {cwd: empty, encoding: 'utf8'});
-	assert.deepEqual(readdirSync(empty), [], 'a bare invocation must not touch the cwd');
+check('a non-TTY run without --yes refuses instead of installing', () => {
+	const blank = mkdtempSync(join(tmpdir(), 'proflow-notty-'));
+	mkdirSync(join(blank, '.git'));
+	const result = spawnSync(process.execPath, [INSTALLER, 'install', '--project', blank], {
+		encoding: 'utf8',
+		stdio: ['pipe', 'pipe', 'pipe'],
+	});
+	assert.equal(result.status, 1);
+	assert.match(result.stderr, /not a TTY/);
+	assert.ok(!existsSync(join(blank, '.commandcode')), 'nothing may be written');
+	rmSync(blank, {recursive: true, force: true});
 });
 
 rmSync(proj, {recursive: true, force: true});
