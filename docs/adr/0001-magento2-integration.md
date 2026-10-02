@@ -22,10 +22,10 @@ The plugin assumes a Claude environment in ways that do not hold in Command Code
 
 ## Decision
 
-**Vendor + transform (option A).** Ship `components/magento2/`, produced by
-`scripts/sync-magento2.mjs` through the shared vendoring engine (`scripts/lib/vendor.mjs`), and
-install it with `--component magento2`. Transformations are declarative data in
-`scripts/patches/magento2.mjs`.
+**Vendor + transform (option A).** Ship `packages/magento2/`, produced by
+`scripts/sync-magento2.mjs` through the shared vendoring engine (`tools/vendor.mjs`), and
+install it with `--magento2`. Transformations are declarative data in
+`patches/magento2.mjs`.
 
 ### Alternatives considered
 
@@ -48,6 +48,9 @@ install it with `--component magento2`. Transformations are declarative data in
   `AGENTS.md`. The `M2_*` environment overrides still win.
 - **Hook adaptation.** The `.docs/` guard's `tool_name` case and project-root env var are updated;
   the installer wires it into `settings.json` (merged, reversible).
+  **Superseded in 0.1.2:** the artifact root was retargeted from the hidden `.docs/` to proflow's
+  `docs/`, so both packs write to one root — the guard now polices `docs/`, keeping its
+  Magento-project scope gate. See ADR 0002 and §4.3 of the 0.1.2 plan.
 - **Dev-only files excluded.** `gen-routing.sh` has no callers in an installed tree, is undocumented
   by any `SKILL.md`, and is broken here (no upstream README, and the rename defeats its
   `magento2-tools:` assumption). The engine excludes it (and any future entry in `exclude`).
