@@ -1,0 +1,12 @@
+{
+  "source": "https://github.com/muon-m2/magento2-tools",
+  "repo": "https://github.com/muon-m2/magento2-tools.git",
+  "ref": "main",
+  "commit": "0d79383c1e4100059fd6cf5aab05869d1dfba855",
+  "version": "2.3.0",
+  "transform": "patches/magento2.mjs",
+  "excluded": [
+    "gen-routing.sh"
+  ],
+  "syncedAt": "2026-10-02T03:53:56.079Z"
+}

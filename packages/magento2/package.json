@@ -1,0 +1,31 @@
+{
+	"name": "@ultra-cmd/magento2",
+	"version": "0.1.2",
+	"description": "Magento 2 engineering toolkit for Command Code — namespaced m2-* skills and commands, two personas, and the docs-path guard hook.",
+	"license": "MIT",
+	"type": "commonjs",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nntoan/proflow.git",
+		"directory": "packages/magento2"
+	},
+	"homepage": "https://github.com/nntoan/proflow#readme",
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"skills/",
+		"commands/",
+		"agents/",
+		"hooks/",
+		"LICENSE",
+		"LICENSE.magento2",
+		"VENDOR.json"
+	],
+	"keywords": [
+		"commandcode",
+		"magento2",
+		"magento",
+		"agent-skills"
+	]
+}
