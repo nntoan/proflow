@@ -770,9 +770,9 @@ export default function (cmd: ModApi): void {
 	cmd.addCommand({
 		name: 'proflow',
 		description: 'Show the proflow guard, footer, and config status',
-		argumentHint: '[rates]',
+		argumentHint: '[--refresh-rates]',
 		handler: ({args}: {args?: string} = {}) => {
-			if (String(args ?? '').trim() === 'rates') {
+			if (String(args ?? '').includes('--refresh-rates')) {
 				const result = refreshRates();
 				return {
 					message: result
