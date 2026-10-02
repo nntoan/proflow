@@ -1,0 +1,30 @@
+{
+	"name": "@ultra-cmd/mod-codegraph",
+	"version": "0.1.2",
+	"description": "Read-only CodeGraph tools for Command Code — explore, node and status from the codegraph CLI, available in plan mode.",
+	"license": "MIT",
+	"type": "commonjs",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nntoan/proflow.git",
+		"directory": "packages/mod-codegraph"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"commandcode": {
+		"mods": [
+			"./mods/codegraph.ts"
+		]
+	},
+	"files": [
+		"mods/",
+		"LICENSE"
+	],
+	"keywords": [
+		"commandcode",
+		"commandcode-mod",
+		"codegraph",
+		"code-graph"
+	]
+}

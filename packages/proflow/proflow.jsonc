@@ -1,0 +1,19 @@
+// proflow guard rules — JSONC, so comments and trailing commas are fine.
+//
+// The built-in deny/confirm tiers always apply; this file only adds to them or
+// waives them. Precedence is builtins → user (~/.commandcode) → project
+// (.commandcode), and within one command allow beats deny beats confirm.
+//
+// Patterns are JavaScript regular expressions, tested against the raw shell
+// command before it runs.
+{
+	"$schema": "https://raw.githubusercontent.com/nntoan/proflow/main/packages/proflow/proflow.schema.json",
+	"guard": {
+		// Extra commands to hard-block.
+		"deny": [],
+		// Extra commands to ask about before running.
+		"confirm": [],
+		// Commands to exempt from deny/confirm, e.g. "rm -rf ./build".
+		"allow": []
+	}
+}

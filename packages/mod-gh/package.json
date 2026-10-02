@@ -1,0 +1,30 @@
+{
+	"name": "@ultra-cmd/mod-gh",
+	"version": "0.1.2",
+	"description": "The whole gh CLI for Command Code — read-only calls take the no-prompt fast path (and work in plan mode), writes go through the permission pipeline.",
+	"license": "MIT",
+	"type": "commonjs",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nntoan/proflow.git",
+		"directory": "packages/mod-gh"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"commandcode": {
+		"mods": [
+			"./mods/gh.ts"
+		]
+	},
+	"files": [
+		"mods/",
+		"LICENSE"
+	],
+	"keywords": [
+		"commandcode",
+		"commandcode-mod",
+		"github",
+		"gh"
+	]
+}

@@ -1,0 +1,35 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://raw.githubusercontent.com/nntoan/proflow/main/packages/proflow/proflow.schema.json",
+	"title": "proflow configuration",
+	"description": "Guard rules for the proflow harness mod. Read from ~/.commandcode/proflow.json(c) and .commandcode/proflow.json(c); built-in rules always apply and these layers add to (or waive) them.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"description": "JSON Schema reference for editor autocomplete and validation."
+		},
+		"guard": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"deny": {
+					"type": "array",
+					"description": "Regular expressions for commands to hard-block before execution.",
+					"items": {"type": "string"}
+				},
+				"confirm": {
+					"type": "array",
+					"description": "Regular expressions for commands that require confirmation.",
+					"items": {"type": "string"}
+				},
+				"allow": {
+					"type": "array",
+					"description": "Regular expressions exempt from the deny and confirm tiers.",
+					"items": {"type": "string"}
+				}
+			}
+		}
+	}
+}
