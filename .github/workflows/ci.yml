@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The test harness uses module.stripTypeScriptTypes (node >= 22.13).
+        # The suites use module.stripTypeScriptTypes (node >= 22.13).
         node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: Install workspaces
+        run: npm ci
+
       - name: Unit + integration tests
         run: npm test
 
-      - name: Pack sanity — the tarball must carry what the mod reads at runtime
-        run: npm pack --dry-run
+      - name: Pack sanity — every package must carry what it reads at runtime
+        run: npm pack --dry-run --workspaces

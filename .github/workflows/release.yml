@@ -1,9 +1,16 @@
 name: Release
 
-# Publishing is tag-driven: `npm version <patch|minor|major>` (which commits and
-# creates the tag), then `git push --follow-tags`. This workflow asserts the tag
-# matches package.json, runs the tests, publishes with provenance, and cuts a
-# GitHub release. See docs/RELEASING.md.
+# Publishing is tag-driven and uses npm **trusted publishing** (OIDC): there is no
+# NPM_TOKEN, and no long-lived secret anywhere in this repository. The tag must
+# match the root package.json version; every workspace package is then published
+# if that exact version is not on npm yet, so re-running a partial release is safe.
+#
+# One-time setup, for **each** of the six packages on npmjs.com → the package →
+# Settings → Trusted publishing:
+#   GitHub Actions · Organization/user `nntoan` · Repository `proflow`
+#   Workflow filename `release.yml` · and tick **Allow npm publish**
+# (configurations created after 2026-09-03 are stage-only by default, where only
+# `npm stage publish` is allowed). See docs/RELEASING.md.
 
 on:
   push:
@@ -11,47 +18,66 @@ on:
 
 permissions:
   contents: write # create the GitHub release
-  id-token: write # npm provenance (OIDC)
+  id-token: write # OIDC — the npm CLI exchanges this for a short-lived publish token
 
 jobs:
   publish:
+    # Trusted publishing requires a GitHub-hosted runner (self-hosted is not supported).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Node 24 bundles npm 11. Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false # never cache in release builds
 
-      - name: Tag must match package.json version
+      - name: npm must support trusted publishing
         run: |
-          pkg=$(node -p "require('./package.json').version")
+          npm --version
+          node -e "const v=process.argv[1].split('.').map(Number); if (v[0]<11 || (v[0]===11 && v[1]<5)) { console.error('npm '+process.argv[1]+' is too old — trusted publishing needs >= 11.5.1'); process.exit(1) }" "$(npm --version)"
+
+      - name: Tag must match the root version
+        run: |
+          version=$(node -p "require('./package.json').version")
           tag="${GITHUB_REF_NAME#v}"
-          if [ "$pkg" != "$tag" ]; then
-            echo "::error::tag v$tag does not match package.json version $pkg — bump with 'npm version $tag'"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::tag v$tag does not match the root package.json version $version — bump with 'npm version $tag'"
             exit 1
           fi
+
+      - name: Install workspaces
+        run: npm ci
 
       - name: Tests
         run: npm test
 
-      - name: Is this version already on npm?
-        id: pub
+      # Each `npm publish` authenticates with its own OIDC token — there is
+      # deliberately no NODE_AUTH_TOKEN anywhere in this job. Provenance is
+      # automatic under trusted publishing, but we pass --provenance explicitly
+      # so a release FAILS if an attestation cannot be produced, instead of
+      # silently shipping unsigned.
+      - name: Publish every workspace package that is not on npm yet
         run: |
-          pkg=$(node -p "require('./package.json').version")
-          if npm view "@nntoan/proflow@$pkg" version >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::@nntoan/proflow@$pkg is already published — skipping publish (e.g. a manual first release)."
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Publish to npm (provenance)
-        if: steps.pub.outputs.exists == 'false'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          set -euo pipefail
+          # Dependants first: @nntoan/proflow depends on the other five, so it is
+          # published LAST — otherwise someone could install the installer before
+          # the payloads it copies exist on the registry.
+          dirs="$(ls -d packages/* | sort | grep -v '^packages/cli$') packages/cli"
+          for dir in $dirs; do
+            [ -f "$dir/package.json" ] || continue
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            # A public, unauthenticated registry read — it works with no token set.
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "::notice::$name@$version is already published — skipping."
+            else
+              echo "publishing $name@$version"
+              npm publish --provenance --access public --workspace "$name"
+            fi
+          done
 
       - name: GitHub release
         uses: softprops/action-gh-release@v2
