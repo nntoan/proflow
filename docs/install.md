@@ -97,3 +97,13 @@ npm run proflow:uninstall
 `uninstall` deletes exactly what the manifest lists, prunes the directories it emptied, removes the
 magento hook entry from `settings.json` (and that file, if this install created it), and leaves
 everything else — including your `proflow.jsonc` edits — alone.
+
+## Re-running the installer
+
+Running `install` again on a scope that already has proflow pre-selects what is
+actually installed there — detected from the files on disk, not from a record
+file — so a re-run is "change something", not "start over". Options you clear are
+removed from that scope; the core payload is always refreshed, and your
+`proflow.jsonc` is never touched. Flags win over the detected state: `--mod gh`
+keeps only gh, `--no-magento2` clears the pack, and `--yes` with no flags keeps
+everything as it is.

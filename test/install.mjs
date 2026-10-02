@@ -12,6 +12,8 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
+import {detectInstalled} from '../packages/cli/scripts/install.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const INSTALLER = join(ROOT, 'packages', 'cli', 'scripts', 'install.mjs');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'packages', 'cli', 'package.json'), 'utf8'));
@@ -35,6 +37,72 @@ const check = (name, fn) => {
 	fn();
 	checks.push(name);
 };
+
+// ── Detected state on a re-run (no manifest involved) ─────────────────────────
+const touch = path => {
+	mkdirSync(dirname(path), {recursive: true});
+	writeFileSync(path, '');
+};
+const tempProject = prefix => {
+	const dir = mkdtempSync(join(tmpdir(), prefix));
+	mkdirSync(join(dir, '.git'));
+	return dir;
+};
+const runIn = dir => (...args) =>
+	spawnSync(process.execPath, [INSTALLER, ...args, '--project', dir], {encoding: 'utf8'});
+
+check('detectInstalled reads a hand-built scope, no manifest', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'proflow-detect-'));
+	touch(join(dir, 'mods', 'proflow.ts'));
+	touch(join(dir, 'mods', 'codegraph.ts'));
+	mkdirSync(join(dir, 'skills', 'm2-export'), {recursive: true});
+
+	const seen = detectInstalled(dir);
+	assert.equal(seen.core, true);
+	assert.equal(seen.packs.magento2, true);
+	assert.deepEqual(seen.packs.mods, ['codegraph']);
+	assert.deepEqual(seen.artifacts.magento2.skills, ['m2-export']);
+	assert.ok(!existsSync(join(dir, 'proflow.manifest.json')), 'detection must not need the record file');
+});
+
+check('detection survives the manifest being deleted', () => {
+	const proj = tempProject('proflow-nomanifest-');
+	const run = runIn(proj);
+	assert.equal(run('install', '--yes', '--magento2', '--mod', 'codegraph,gh').status, 0);
+	const cc = join(proj, '.commandcode');
+	rmSync(join(cc, 'proflow.manifest.json'), {force: true});
+
+	const seen = detectInstalled(cc);
+	assert.equal(seen.core, true);
+	assert.equal(seen.packs.magento2, true);
+	assert.deepEqual(seen.packs.mods.slice().sort(), ['codegraph', 'gh']);
+});
+
+check('a re-run with no flags keeps the installed mods', () => {
+	const proj = tempProject('proflow-keep-');
+	const run = runIn(proj);
+	assert.equal(run('install', '--yes', '--mod', 'codegraph,gh').status, 0);
+	assert.equal(run('install', '--yes').status, 0);
+	const cc = join(proj, '.commandcode');
+	for (const name of ['proflow.ts', 'codegraph.ts', 'gh.ts']) {
+		assert.ok(existsSync(join(cc, 'mods', name)), `${name} must survive a --yes re-run`);
+	}
+});
+
+check('a re-run that drops a mod removes it, and leaves the config alone', () => {
+	const proj = tempProject('proflow-drop-');
+	const run = runIn(proj);
+	assert.equal(run('install', '--yes', '--mod', 'codegraph,gh').status, 0);
+	const cc = join(proj, '.commandcode');
+	const config = join(cc, 'proflow.jsonc');
+	writeFileSync(config, '// mine\n{}\n');
+	assert.equal(run('install', '--yes', '--mod', 'gh').status, 0);
+
+	assert.ok(!existsSync(join(cc, 'mods', 'codegraph.ts')), 'the deselected mod is removed');
+	assert.ok(existsSync(join(cc, 'mods', 'gh.ts')), 'the kept mod stays');
+	assert.ok(existsSync(join(cc, 'mods', 'proflow.ts')), 'the core mod stays');
+	assert.equal(readFileSync(config, 'utf8'), '// mine\n{}\n', 'the config is never touched');
+});
 
 check('install provisions the native surfaces, the harness mod, and a manifest', () => {
 	ok(run('install', '--yes'));

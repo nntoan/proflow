@@ -18,7 +18,7 @@
 //                  package directory.
 
 import {spawnSync} from 'node:child_process';
-import {cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {basename, dirname, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -34,6 +34,71 @@ const MODS = {
 	gh: {pkg: 'mod-gh', file: 'mods/gh.ts', cli: 'gh'},
 	orca: {pkg: 'mod-orca', file: 'mods/orca.ts', cli: 'orca'},
 };
+
+/**
+ * What this scope actually holds, from the filesystem alone — never from
+ * proflow.manifest.json. The gate, the pre-selection and the removal share it.
+ */
+export function detectInstalled(ccDir) {
+	const listing = dir => {
+		try {
+			return readdirSync(dir);
+		} catch {
+			return [];
+		}
+	};
+	const modsDir = join(ccDir, 'mods');
+	const skills = listing(join(ccDir, 'skills'));
+	const m2Skills = skills.filter(name => name.startsWith('m2-'));
+	const hook = existsSync(join(ccDir, 'hooks', 'm2'));
+	const modIds = Object.keys(MODS).filter(id => existsSync(join(modsDir, basename(MODS[id].file))));
+	const coreDirs = ['commands', 'skills', 'references', 'agents', 'docs'];
+	return {
+		core:
+			coreDirs.some(dir => listing(join(ccDir, dir)).length > 0) ||
+			existsSync(join(modsDir, 'proflow.ts')),
+		packs: {magento2: m2Skills.length > 0 || hook, mods: modIds},
+		artifacts: {mods: modIds, magento2: {skills: m2Skills, hook}},
+	};
+}
+
+/**
+ * Remove the observed optional components `keep` no longer selects. Never the
+ * core payload, never the config. Returns labels for the caller to report.
+ */
+export function removeObserved(ccDir, keep, opts) {
+	const observed = detectInstalled(ccDir);
+	const removed = [];
+	const drop = path => {
+		if (!opts.dryRun) rmSync(path, {recursive: true, force: true});
+	};
+	for (const id of observed.artifacts.mods) {
+		if ((keep.mods ?? []).includes(id)) continue;
+		drop(join(ccDir, 'mods', basename(MODS[id].file)));
+		removed.push(`${id} (mod)`);
+	}
+	if (observed.packs.magento2 && !keep.magento2) {
+		for (const name of observed.artifacts.magento2.skills) drop(join(ccDir, 'skills', name));
+		const settingsFile = join(ccDir, 'settings.json');
+		try {
+			const settings = JSON.parse(readFileSync(settingsFile, 'utf8'));
+			for (const event of Object.keys(settings.hooks ?? {})) {
+				settings.hooks[event] = (settings.hooks[event] ?? []).filter(
+					group => !(group.hooks ?? []).some(h => String(h.command ?? '').includes('hooks/m2/')),
+				);
+				if (settings.hooks[event].length === 0) delete settings.hooks[event];
+			}
+			if (Object.keys(settings.hooks ?? {}).length === 0) delete settings.hooks;
+			if (!opts.dryRun) writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
+		} catch {
+			// no settings file — nothing to unhook
+		}
+		drop(join(ccDir, 'hooks', 'm2'));
+		removed.push('magento2');
+	}
+	return removed;
+}
+
 
 const CLI_INSTALLERS = {
 	darwin: {gh: ['brew', ['install', 'gh']], orca: null, codegraph: ['npm', ['i', '-g', '@colbymchenry/codegraph']]},
@@ -385,6 +450,7 @@ export function applyPlan(plan, opts, {onStep} = {}) {
 
 function install(opts, selection) {
 	const plan = buildPlan(opts, selection);
+	for (const name of removeObserved(scopeDir(opts), selection, opts)) info(`  remove ${name}`);
 	if (plan.problems.length > 0) {
 		for (const problem of plan.problems) fail(problem);
 		return;
@@ -509,12 +575,23 @@ async function wizard(opts) {
 
 	const ccDir = scopeDir(opts);
 	const prev = readManifest(ccDir);
+	// The pre-selection comes from what this scope holds; flags, when given, win.
+	const observed = detectInstalled(ccDir);
+	const flagPacks =
+		opts.mods !== undefined || opts.magento2 !== undefined
+			? [...(opts.magento2 ? ['magento2'] : []), ...(opts.mods ?? [])]
+			: null;
+	const detected = flagPacks ?? [
+		...(observed.packs.magento2 ? ['magento2'] : []),
+		...observed.packs.mods,
+	];
 	p.intro(`proflow ${VERSION} — Command Code setup`);
 
-	if (prev) {
+	if (observed.core) {
 		const action = guard(
 			await p.select({
 				message: `proflow is already installed in ${scopeLabel(opts, ccDir)}.`,
+		initialValue: 'reconfigure',
 				options: [
 					{value: 'reconfigure', label: 'Reconfigure', hint: 'add or remove packs, change what is installed'},
 					{value: 'status', label: 'Status', hint: 'show what is installed'},
@@ -551,7 +628,11 @@ async function wizard(opts) {
 				}),
 			packs: () =>
 				p.multiselect({
-					message: 'Optional packs',
+				message:
+					detected.length > 0
+						? 'Optional packs (detected from this installation)'
+						: 'Optional packs',
+				initialValue: detected,
 					required: false,
 					options: [
 						{value: 'magento2', label: 'Magento 2', hint: '36 skills · 18 commands · 2 personas · docs guard hook'},
@@ -565,6 +646,8 @@ async function wizard(opts) {
 	);
 
 	const selection = {magento2: answers.packs.includes('magento2'), mods: answers.packs.filter(v => v !== 'magento2')};
+	const removals = removeObserved(scopeDir({...opts, scope: answers.scope}), selection, opts);
+	if (removals.length > 0) p.log.info(`removing (deselected): ${removals.join(', ')}`);
 
 	// Per-missing-CLI confirm: one question per selected pack whose CLI is absent.
 	const usableMods = [];
@@ -648,7 +731,8 @@ async function main(argv) {
 			if (!isTty && !opts.yes && !opts.dryRun) {
 				fail('not a TTY — re-run with --yes (or pass flags) so nothing is installed by surprise');
 			} else {
-				install(opts, {magento2: opts.magento2 ?? false, mods: opts.mods ?? []});
+				const observed = detectInstalled(scopeDir(opts)).packs;
+		install(opts, {magento2: opts.magento2 ?? observed.magento2, mods: opts.mods ?? observed.mods});
 			}
 		} else {
 			await wizard(opts);
