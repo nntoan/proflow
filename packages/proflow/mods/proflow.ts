@@ -263,23 +263,157 @@ export const CONTEXT_WINDOWS: Record<string, number> = {
 	'moonshotai/Kimi-K3': 1_000_000,
 };
 
+export interface Rates {
+	input: number;
+	output: number;
+	cacheRead: number;
+	cacheWrite?: number;
+	cacheWrite1h?: number;
+}
+
 /**
- * Per-million rates, quoted from Command Code's own registry
- * (`command-code-knowledge/reference/models.md`) — the same data the harness's
- * `getDisplayRates` table is built from. A model that is not listed shows no
- * cost rather than a wrong one, mirroring the harness: `getDisplayRates` throws
- * and `estimateSessionCostUsd` swallows it.
+ * One price cell of Command Code's registry: `$0.15/$0.6 · cache $0.003`, or
+ * `$0.03/$0.13 · cache $0.006 (write $0.038)` — input/output per million, then
+ * the cache-read rate, then an optional cache-write rate. These are the display
+ * rates: exactly the numbers the harness's `getDisplayRates` returns.
  */
-export const PRICES: Record<
-	string,
-	{input: number; output: number; cacheRead: number; cacheWrite?: number; cacheWrite1h?: number}
-> = {
-	'deepseek/deepseek-v4.1-flash': {input: 0.15, output: 0.6, cacheRead: 0.003},
-	'deepseek/deepseek-v4.1-flash-fast': {input: 0.16, output: 0.58, cacheRead: 0.016},
-	'deepseek/deepseek-v4-flash-fast': {input: 0.28, output: 0.56, cacheRead: 0.07},
-	'deepseek/deepseek-v4-flash-vision-exp': {input: 0.15, output: 0.6, cacheRead: 0.003},
-	'moonshotai/Kimi-K3': {input: 3, output: 15, cacheRead: 0.3},
-};
+export function parsePriceColumn(cell: string): Rates | null {
+	const main = /\$([0-9.]+)\s*\/\s*\$([0-9.]+)/.exec(cell);
+	const cache = /cache\s*\$([0-9.]+)/.exec(cell);
+	if (!main || !cache) return null;
+	const write = /\(write\s*\$([0-9.]+)\)/.exec(cell);
+	return {
+		input: Number(main[1]),
+		output: Number(main[2]),
+		cacheRead: Number(cache[1]),
+		...(write ? {cacheWrite: Number(write[1])} : {}),
+	};
+}
+
+/** The registry table's rows: `| \`model/id\` | … | $in/$out · cache $c | … |`. */
+export function parseRegistry(markdown: string): Record<string, Rates> {
+	const table: Record<string, Rates> = {};
+	for (const line of markdown.split('\n')) {
+		const model = /^\|\s*`([^`]+)`\s*\|/.exec(line);
+		if (!model) continue;
+		const parsed = parsePriceColumn(line);
+		if (parsed) table[model[1]] = parsed;
+	}
+	return table;
+}
+
+/**
+ * The installed Command Code registry, located from the running bundle
+ * (`…/command-code/dist/cli.mjs`): a mod runs in-process, so argv[1] is the
+ * harness itself. Each candidate is checked on disk; a miss means no cost.
+ */
+export function locateRegistry(): string | null {
+	const entry = process.argv[1];
+	if (!entry) return null;
+	let dir = entry;
+	for (let depth = 0; depth < 6; depth++) {
+		dir = join(dir, '..');
+		const candidate = join(dir, 'dist', 'bundled', 'command-code-knowledge', 'reference', 'models.md');
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+}
+
+/** The payload directory this mod was loaded from (`…/mods/proflow.ts` → `…`). */
+function payloadDir(): string | null {
+	// The harness loads mods through a CJS transform, so `import.meta` may not
+	// exist there (and under the test loader it does not) — `__dirname` is the
+	// reliable route, with the ESM branch for a plain `node mods/proflow.ts`.
+	try {
+		if (typeof __dirname === 'string') return join(__dirname, '..');
+	} catch {
+		// fall through to the ESM route
+	}
+	try {
+		return decodeURIComponent(new URL('..', import.meta.url).pathname);
+	} catch {
+		return null;
+	}
+}
+
+interface RatesConfig {
+	source: 'snapshot' | 'runtime';
+	prices: Record<string, Rates>;
+}
+
+/** `rates` (the shipped snapshot by default) and per-model `prices` overrides. */
+function loadRatesConfig(cwd: string): RatesConfig {
+	let user: Record<string, unknown> = {};
+	for (const name of ['proflow.jsonc', 'proflow.json']) {
+		try {
+			user = JSON.parse(stripJsonc(readFileSync(join(cwd, name), 'utf8'))) as Record<string, unknown>;
+			break;
+		} catch {
+			// try the next name
+		}
+	}
+	const prices = user.prices as Record<string, Rates> | undefined;
+	return {
+		source: user.rates === 'runtime' ? 'runtime' : 'snapshot',
+		prices: prices && typeof prices === 'object' ? prices : {},
+	};
+}
+
+/**
+ * The rate table: the shipped snapshot by default, the installed registry when
+ * `rates: "runtime"` is configured (or when the snapshot is missing, so a stale
+ * install still prices correctly), then the user's own `prices` on top. When
+ * none can be read the table is empty and the cost segment simply disappears —
+ * never a figure we cannot stand behind.
+ */
+/**
+ * Where the snapshot may live, in order: an explicit override, the installed
+ * payload directory (where the installer writes it), then next to the mod. The
+ * first two do not depend on the loader telling the mod its own path.
+ */
+function rateFiles(): string[] {
+	const files: string[] = [];
+	const override = process.env.PROFLOW_RATES;
+	if (override) files.push(override);
+	files.push(join(homedir(), '.commandcode', 'rates.json'));
+	const dir = payloadDir();
+	if (dir) files.push(join(dir, 'rates.json'));
+	return files;
+}
+
+export function loadRates(cwd = process.cwd()): Record<string, Rates> {
+	const config = loadRatesConfig(cwd);
+	let table: Record<string, Rates> = {};
+	if (config.source === 'snapshot') {
+		for (const candidate of rateFiles()) {
+			try {
+				table = JSON.parse(readFileSync(candidate, 'utf8')) as Record<string, Rates>;
+				break;
+			} catch {
+				table = {};
+			}
+		}
+	}
+	if (Object.keys(table).length === 0) {
+		const file = locateRegistry();
+		if (file) {
+			try {
+				table = parseRegistry(readFileSync(file, 'utf8'));
+			} catch {
+				table = {};
+			}
+		}
+	}
+	return {...table, ...config.prices};
+}
+
+let activeRates: Record<string, Rates> | null = null;
+
+/** The table, loaded once per process. */
+function defaultRates(): Record<string, Rates> {
+	activeRates ??= loadRates();
+	return activeRates;
+}
 
 /**
  * A copy of the harness's estimator (`estimateSessionCostUsd` in cli.mjs), which
@@ -293,8 +427,9 @@ export const PRICES: Record<
 export function estimateCost(
 	model: string | null,
 	usage: Record<string, number>,
+	table: Record<string, Rates> = defaultRates(),
 ): number | null {
-	const rates = model ? PRICES[model] : undefined;
+	const rates = model ? table[model] : undefined;
 	if (!rates) return null;
 	const input = usage.inputTokens ?? 0;
 	const output = usage.outputTokens ?? 0;

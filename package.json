@@ -13,7 +13,8 @@
 		"proflow:install": "node packages/cli/scripts/install.mjs install",
 		"proflow:uninstall": "node packages/cli/scripts/install.mjs uninstall",
 		"test": "node --disable-warning=ExperimentalWarning test/run.mjs",
-		"release:check": "npm test && npm pack --dry-run --workspaces"
+		"release:check": "npm test && npm pack --dry-run --workspaces",
+		"rates": "node scripts/rates.mjs"
 	},
 	"engines": {
 		"node": ">=22.13"
