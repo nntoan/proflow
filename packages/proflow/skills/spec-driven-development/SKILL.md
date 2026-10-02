@@ -5,9 +5,10 @@ description: Creates specs before coding. Use when starting a new project, featu
 
 # Spec-Driven Development
 
-> **proflow:** run this through the `/spec` command. It adds parallel recon before
-> the interview and a `spec-reviewer` reflection loop before approval, and stores the
-> spec at `docs/spec/<id>/` (`SPEC.md`, `explore-brief.md`, `review-log.md`).
+> **proflow:** run this through the `/spec` command. Specs live at `docs/spec/<id>/`
+> (`SPEC.md` with its `explore-brief.md` and `review-log.md` siblings), and before the spec
+> is approved it goes through the `spec-reflection` skill — a `spec-reviewer` pass with a
+> logged decision for every finding.
 
 ## Overview
 

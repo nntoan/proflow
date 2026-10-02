@@ -1,16 +1,8 @@
----
-description: Explore a rough idea before /spec — parallel research and scouting to sharpen intent.
-argument-hint: "<rough idea>"
----
+Invoke the idea-refine and interview-me skills.
 
-**Skill activation (do this first).** Load the `idea-refine` and `interview-me` skills: call the
-`agent_skills` tool with `{"action":"load","name":"idea-refine"}`, then again with
-`{"action":"load","name":"interview-me"}`, and follow them. If the pack is installed as native
-Command Code skills, load them with `activate_skill` instead.
-
-Use `/brainstorm` when the intent is still fuzzy — a greenfield project, a "wouldn't it be nice if…", or a
-direction with several plausible shapes. It produces a one-page concept, not a specification. When
-the concept is concrete, hand off to `/spec`.
+Use `/brainstorm` when the intent is still fuzzy — a greenfield project, a "wouldn't it be nice if…", or
+a direction with several plausible shapes. It produces a one-page concept, not a specification, and it
+is optional: `/spec` is the entry point when you already know what you want to build.
 
 ## Phase A — Fan out (parallel reconnaissance)
 
@@ -35,8 +27,8 @@ it rather than padding the fan-out.
 
 Following `idea-refine`: generate 5–8 deliberately different directions, score them against the
 user's stated success signal, then converge on one recommended direction. Surface the assumptions
-behind it. Ask the user to pick using the **`ask_user_question`** tool when there is a real fork —
-do not choose silently.
+behind it. Ask the user to pick using the question tool when there is a real fork — do not choose
+silently.
 
 ## Phase C — The one-pager
 
