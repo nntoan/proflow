@@ -1,0 +1,17 @@
+{
+	"deepseek/deepseek-v4.1-flash": {
+		"input": 0.15,
+		"output": 0.6,
+		"cacheRead": 0.003
+	},
+	"deepseek/deepseek-v4.1-flash-fast": {
+		"input": 0.16,
+		"output": 0.58,
+		"cacheRead": 0.016
+	},
+	"moonshotai/Kimi-K3": {
+		"input": 3,
+		"output": 15,
+		"cacheRead": 0.3
+	}
+}

@@ -9,7 +9,7 @@
 //      the next lifecycle step, learned by watching `activate_skill`;
 //   3. `/proflow`, a status command.
 
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 
@@ -405,6 +405,34 @@ export function loadRates(cwd = process.cwd()): Record<string, Rates> {
 		}
 	}
 	return {...table, ...config.prices};
+}
+
+/**
+ * Re-read the installed registry and rewrite the machine-local snapshot. The
+ * installer calls this at install time and `/proflow rates` calls it on demand,
+ * so prices can be refreshed without reinstalling anything.
+ */
+export function refreshRates(
+	target = join(homedir(), '.commandcode', 'rates.json'),
+): {count: number; file: string} | null {
+	const registry = locateRegistry();
+	if (!registry) return null;
+	let table: Record<string, Rates> = {};
+	try {
+		table = parseRegistry(readFileSync(registry, 'utf8'));
+	} catch {
+		return null;
+	}
+	const count = Object.keys(table).length;
+	if (count === 0) return null;
+	try {
+		mkdirSync(join(target, '..'), {recursive: true});
+		writeFileSync(target, `${JSON.stringify(table, null, '\t')}\n`);
+	} catch {
+		return null;
+	}
+	activeRates = null; // this process re-reads on the next turn
+	return {count, file: target};
 }
 
 let activeRates: Record<string, Rates> | null = null;

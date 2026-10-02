@@ -31,7 +31,7 @@ const customEntries = [];
 const seeded = [];
 // The cost segment prices turns from the generated snapshot; point the mod at
 // the repo's own copy so this check does not depend on the machine's install.
-process.env.PROFLOW_RATES = decodeURIComponent(new URL('../packages/proflow/rates.json', import.meta.url).pathname);
+process.env.PROFLOW_RATES = decodeURIComponent(new URL('./rates.fixture.json', import.meta.url).pathname);
 let status = null;
 let confirmAnswer = false;
 
