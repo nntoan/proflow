@@ -367,9 +367,10 @@ export function applyPlan(plan, opts, {onStep} = {}) {
 	if (!opts.dryRun) {
 		onStep?.('rates');
 		try {
-			process.stdout.write(execFileSync(process.execPath, [join(SELF_DIR, 'rates.mjs')], {encoding: 'utf8'}));
-		} catch {
-			process.stdout.write('rates: skipped — the generator did not run; the footer reads it live\n');
+			process.stdout.write(execFileSync(process.execPath, [join(dirname(realpathSync(fileURLToPath(import.meta.url))), 'rates.mjs')], {encoding: 'utf8'}));
+		} catch (error) {
+			process.stdout.write(`rates: skipped — ${error.code ?? error.status ?? 'unknown'}${error.stderr ? `: ${String(error.stderr).trim().split('\n')[0]}` : ''}\n`);
+			process.stdout.write('          the footer reads the registry live in the meantime\n');
 		}
 	}
 
