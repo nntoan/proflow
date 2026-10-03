@@ -17,6 +17,7 @@
 //                  (global) — resolved from --project/--global, never the
 //                  package directory.
 
+import {execFileSync} from 'node:child_process';
 import {spawnSync} from 'node:child_process';
 import {cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
@@ -369,7 +370,10 @@ export function applyPlan(plan, opts, {onStep} = {}) {
 		try {
 			process.stdout.write(execFileSync(process.execPath, [join(dirname(realpathSync(fileURLToPath(import.meta.url))), 'rates.mjs')], {encoding: 'utf8'}));
 		} catch (error) {
-			process.stdout.write(`rates: skipped — ${error.code ?? error.status ?? 'unknown'}${error.stderr ? `: ${String(error.stderr).trim().split('\n')[0]}` : ''}\n`);
+			process.stdout.write(`rates: skipped — ${error?.message ?? 'no message'}`
+				+ `\n          code=${error?.code} status=${error?.status} stderr=${String(error?.stderr ?? '').trim().split('\n')[0] || 'none'}`
+				+ `\n          url=${import.meta.url}`
+				+ `\n          resolved=${join(dirname(realpathSync(fileURLToPath(import.meta.url))), 'rates.mjs')} exists=${existsSync(join(dirname(realpathSync(fileURLToPath(import.meta.url))), 'rates.mjs'))}\n`);
 			process.stdout.write('          the footer reads the registry live in the meantime\n');
 		}
 	}
