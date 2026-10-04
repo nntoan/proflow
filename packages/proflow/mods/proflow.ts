@@ -481,6 +481,22 @@ export function estimateCost(
 
 // ── The footer ─────────────────────────────────────────────────────────────────
 
+/**
+ * The China calendar date of an instant — Asia/Shanghai, a fixed UTC+8 with no DST.
+ * This is the only place the China timezone enters the mod: the peak windows are UTC,
+ * but "all day" for a weekend or holiday is a China day, `[D−1 16:00Z, D 16:00Z)`.
+ */
+export function cnDateOf(now: Date): string {
+	return new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/** Is a China date a Saturday or Sunday? Derived from the date alone, so it needs no file —
+ *  which is why weekends survive a missing calendar and holidays do not. */
+export function isCnWeekend(cnDate: string): boolean {
+	const day = new Date(`${cnDate}T00:00:00Z`).getUTCDay();
+	return day === 0 || day === 6;
+}
+
 const LIFECYCLE: {match: RegExp; next: string}[] = [
 	{match: /^spec-reflection$/, next: '/to-plan'},
 	{match: /^spec-driven-development$/, next: '/to-plan'},
