@@ -1,5 +1,6 @@
 ---
 name: spec-reviewer
+tools: glob, grep, read_file, shell_command
 description: Adversarial reviewer of a draft specification before implementation. Use inside the /spec reflection loop to find substantive defects (missing scenarios, contradictions, untestable acceptance criteria) in docs/spec/<id>/SPEC.md and report them to the main session.
 ---
 

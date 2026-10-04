@@ -1,5 +1,6 @@
 ---
 name: code-reviewer
+tools: glob, grep, read_file, shell_command
 description: Senior code reviewer that evaluates changes across five dimensions — correctness, readability, architecture, security, and performance. Use for thorough code review before merge.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: test-engineer
+tools: glob, grep, read_file, write_file, edit_file, shell_command
 description: QA engineer specialized in test strategy, test writing, and coverage analysis. Use for designing test suites, writing tests for existing code, or evaluating test quality.
 ---
 

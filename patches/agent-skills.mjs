@@ -4,6 +4,11 @@
 // shared engine in `tools/vendor.mjs`. Each `find` must match exactly
 // once, or the sync fails — so upstream drift is caught, never shipped.
 //
+// The vendored agents, too: upstream omits `tools:`, which Claude Code treats as
+// "every tool" but this harness needs declared explicitly — without it a sub-agent
+// invents Claude-style names (Read, Bash) and dies on `No tool named Read exists`.
+// Each agent gets exactly the tools its job needs; reviewers stay read-only.
+//
 // We do NOT fork the 25 skills: only `spec-driven-development` needs aligning,
 // because it prescribes saving module specs at the project root, which
 // contradicts proflow's `docs/spec/<id>/` convention. That skill is reachable
@@ -42,6 +47,58 @@ export default [
 			{
 				find: '- [ ] The spec is saved to a file in the repository',
 				with: '- [ ] The spec is saved to `docs/spec/<id>/SPEC.md` (never a repository-root `SPEC.md`)',
+			},
+		],
+	},
+
+	// Agents whose job needs the tool list declared, per the note above.
+	{
+		file: 'agents/spec-reviewer.md',
+		// Reads a spec and the code it cites; never writes.
+		replaces: [
+			{
+				find: 'name: spec-reviewer\n',
+				with: 'name: spec-reviewer\ntools: glob, grep, read_file, shell_command\n',
+			},
+		],
+	},
+	{
+		file: 'agents/code-reviewer.md',
+		// Reads a diff and the surrounding code; never writes.
+		replaces: [
+			{
+				find: 'name: code-reviewer\n',
+				with: 'name: code-reviewer\ntools: glob, grep, read_file, shell_command\n',
+			},
+		],
+	},
+	{
+		file: 'agents/security-auditor.md',
+		// Reads code and configuration; never writes.
+		replaces: [
+			{
+				find: 'name: security-auditor\n',
+				with: 'name: security-auditor\ntools: glob, grep, read_file, shell_command\n',
+			},
+		],
+	},
+	{
+		file: 'agents/web-performance-auditor.md',
+		// Reads pages, bundles and config; never writes.
+		replaces: [
+			{
+				find: 'name: web-performance-auditor\n',
+				with: 'name: web-performance-auditor\ntools: glob, grep, read_file, shell_command\n',
+			},
+		],
+	},
+	{
+		file: 'agents/test-engineer.md',
+		// Writes and runs tests, so it needs write access as well.
+		replaces: [
+			{
+				find: 'name: test-engineer\n',
+				with: 'name: test-engineer\ntools: glob, grep, read_file, write_file, edit_file, shell_command\n',
 			},
 		],
 	},
