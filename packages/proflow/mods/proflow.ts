@@ -534,6 +534,49 @@ export function nextFlip(now: number, windows: [number, number][]): {inPeak: boo
 	return {inPeak, minutes: best === Infinity ? 0 : best};
 }
 
+/**
+ * The state at an instant. The calendar is a parameter, defaulting to empty, so the
+ * resolver is provable before any fetching exists — and so a machine with no calendar
+ * still gets the weekend rule, losing only holidays.
+ */
+export interface CnCalendar {
+	off: Set<string>;
+}
+
+export function isOffPeak(
+	now: Date,
+	windows: [number, number][],
+	calendar: CnCalendar = {off: new Set()},
+): boolean {
+	const cnDate = cnDateOf(now);
+	if (isCnWeekend(cnDate) || calendar.off.has(cnDate)) return true;
+	return !inWindow(now.getUTCHours() * 60 + now.getUTCMinutes(), windows);
+}
+
+/** A long holiday is at most ~8 days; 16 is headroom, and the scan is bounded by it. */
+const MAX_SCAN_MINUTES = 16 * 24 * 60;
+
+/**
+ * Milliseconds until the state next changes. Every edge in this design is minute-aligned
+ * (`HH:MM` windows, and China midnight at 16:00Z), so a minute scan finds the exact edge
+ * and `now`'s own seconds make the result second-accurate.
+ */
+export function nextChange(
+	now: Date,
+	windows: [number, number][],
+	calendar: CnCalendar = {off: new Set()},
+): number {
+	const current = isOffPeak(now, windows, calendar);
+	const start = Math.floor(now.getTime() / 60000) * 60000;
+	for (let i = 1; i <= MAX_SCAN_MINUTES; i++) {
+		const edge = start + i * 60000;
+		if (isOffPeak(new Date(edge), windows, calendar) !== current) {
+			return edge - now.getTime();
+		}
+	}
+	return 0; // nothing changes within the horizon: nothing sensible to promise
+}
+
 export function formatMinutes(minutes: number): string {
 	if (minutes <= 0) return 'now';
 	const h = Math.floor(minutes / 60);
