@@ -46,7 +46,7 @@ to spend now or wait.
    - 2026-10-03T15:27:00Z, holiday to 10-07 → next peak 2026-10-08T01:00:00Z → **`105:33:00`**
 5. **One machine-local calendar: `$HOME/.commandcode/holidays-cn.json`** — a property of the
    machine and of DeepSeek's policy, not of a project, so the installer writes it there for
-   every scope, deliberately. `PROFLOW_HOLIDAYS=off` / `--no-holidays` skips the fetch.
+   every scope, deliberately. **There is no override** — this file is the single source of truth for the calendar, exactly as `~/.commandcode/rates.json` is for rates. `PROFLOW_HOLIDAYS=off` / `--no-holidays` skips the fetch.
 6. **The fetch script ships and is spawned best-effort — unverified.** The installer copies
    `packages/cli/scripts/holidays.mjs` to `$HOME/.commandcode/scripts/holidays.mjs`.
    `/proflow --refresh-holidays` spawns that literal path with a **5 s timeout** and prints
@@ -109,7 +109,6 @@ PROFLOW_HOLIDAYS=off npm run proflow:install -- --global
 packages/proflow/mods/proflow.ts        resolver + formatter + row + colours (pure, exported)
 packages/cli/scripts/holidays.mjs       fetch + validate + atomic write; source and verification date in-file
 packages/cli/scripts/install.mjs        copies the script, runs one fetch, best effort
-packages/proflow/proflow.schema.json    holidaysCn override (paths and precedence per Open Q2)
 test/smoke.mjs                          resolver, formatter, row, colour, flag cases
 test/install.mjs                        script copy, HOME isolation, uninstall scope
 docs/mod.md                             flag table corrected; deepseek-holidays marked inert; policy citation recorded
@@ -171,7 +170,7 @@ Default window `01:00-04:00,06:00-10:00` (9am–12pm, 2–6pm China).
 | 16 | 2027-01-02T02:00Z = CN Sat 10:00, in-window, 2026-only calendar | off-peak, `peak in 47:00:00` (next window Mon 2027-01-04T01:00Z) |
 | 17 | empty calendar: 2026-10-10T08:00Z, then 2026-10-14T08:00Z | off-peak `peak in 41:00:00`; then peak `off-peak in 02:00:00` — window ∪ weekend |
 | 18 | malformed installed calendar (truncated JSON), same two instants | identical to row 17, no crash |
-| 19 | `holidaysCn` override: home calendar 10-01…10-04 only, project config lists `2026-10-05`; 2026-10-05T02:00Z | off-peak, `peak in 71:00:00` — the project override adds the day |
+| 19 | a holiday that is also a weekend (2026-10-03 = Sat + holiday) | as row 3 — `peak in 105:33:00`; the rules union, the state does not change |
 | 20 | formatter: 0 s, 59 s, 359999 s, 360000 s | `00:00:00`, `00:00:59`, `99:59:59`, `100:00:00` |
 | 21 | flag: a non-empty `deepseek-holidays` value (test/install.mjs or smoke) | the `/proflow` status carries the pinned rejection literal; the description matches criterion 9; the registry still lists the flag |
 | 22 | validation floor (test/install.mjs, offline): a fixture with **4** dates for a year | refused; the previous file byte-identical |
@@ -227,6 +226,7 @@ Default window `01:00-04:00,06:00-10:00` (9am–12pm, 2–6pm China).
 | 5 | Flag rejection had no literal, trigger or surface; the assertion unexecutable (🟡) | Pinned literal, non-empty trigger, `/proflow` status; new assertion; mock records descriptions |
 | 5 | Criterion 3's description unobservable (🟡) | The mock records `options.description` and asserts it |
 | 5 | Row 19 unpinned and pending Q2 (🟡) | Pinned: home omits 10-05, the override adds it |
+| — | **The `holidaysCn` override existed only because I invented it** — never requested; the decision was a single home-file source of truth | Removed from the spec, plan and task list; no schema entry; row 19 now tests a holiday-on-a-weekend |
 | 5 | Three install-side outputs had no literals (🟡) | `holidays: wrote …`, `holidays: skipped — <reason>`, row 24 |
 | 5 | The premise had no citation (💡→handled) | Recorded as the reporter's account, citation to verify in the plan and in `docs/mod.md` |
 
@@ -236,12 +236,8 @@ Default window `01:00-04:00,06:00-10:00` (9am–12pm, 2–6pm China).
    `gov.cn` — but the path changes yearly and I will not guess a URL. Identify the endpoint,
    record it with the verification date in `holidays.mjs`, and parse only what the notice states.
    Until then the fetch is best-effort and an un-fetched machine runs window ∪ weekend.
-2. **`holidaysCn` override shape** — `{year: {off: [dates]}}`, at the two config locations the
-   code already layers (home, then project; **project wins**), with the schema's
-   `additionalProperties: false` relaxed for it. Row 19 assumes this shape; confirm before
-   implementation.
-3. **The citation** for the off-peak policy (Objective), recorded in `docs/mod.md`.
-4. **Residual risks accepted:** an unknown CN year resolves window ∪ weekend, so a holiday
+2. **The citation** for the off-peak policy (Objective), recorded in `docs/mod.md`.
+3. **Residual risks accepted:** an unknown CN year resolves window ∪ weekend, so a holiday
    inside a peak window can read PEAK until the fetch succeeds; the spawned home script is
    unverified, so a user who edits it owns the result; and the timeout/failure lines are stated
    but untested.
