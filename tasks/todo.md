@@ -1,0 +1,74 @@
+# Task list — DeepSeek off-peak calendar
+
+**Spec:** `docs/spec/deepseek-offpeak-calendar/SPEC.md` (approved, committed `8dc25b4`)
+**Plan:** `tasks/plan.md` · full approved text at `~/.commandcode/plans/deepseek-offpeak-calendar.md`
+**Review log (local):** `docs/spec/deepseek-offpeak-calendar/review-log.md`
+
+Verification for every task: `npm test` (7 suites) — plus the focused command named below.
+
+## Phase 1 — Foundation (the resolver, calendar-free)
+
+- [ ] **T1 — CN calendar primitives.** `cnDateOf` (UTC+8, no DST) and `isCnWeekend`, exported.
+      *Accept:* the 16:00Z boundary maps to the right CN date; 2026-10-03 → Sat, 2026-10-05 → Mon.
+      *Verify:* `node test/smoke.mjs`. *Files:* mod, smoke. *Size:* S
+- [ ] **T2 — `windowState` + the countdown search.** Replace `nextFlip`; window ∪ weekend only.
+      *Accept:* spec rows 2, 5, 6, 8, 9, 10, 12, 14, 17 pass under the default window.
+      *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
+
+### Checkpoint A
+- [ ] `npm test` green; older window-only rows updated
+- [ ] No behaviour change beyond the weekend rule without a calendar
+- [ ] Human review before the calendar lands
+
+## Phase 2 — Calendar input and the row
+
+- [ ] **T3 — the calendar loader.** Home file → project `holidaysCn` override (project wins),
+      shape-validated, cached per process, invalidated on refresh.
+      *Accept:* rows 1, 3, 4, 11, 13, 15, 16, 19 pass; rows 17/18 degrade; rows 15/16 unchanged.
+      *Verify:* `npm test`. *Files:* mod, schema, smoke. *Size:* M
+- [ ] **T4 — `formatDuration` and the row.** `H:MM:SS`; PEAK red `\u001b[31m`, off-peak green
+      `\u001b[32m`; the row regex `32|33` → `31|32`.
+      *Accept:* rows 1/2/8/9 pin the codes; row 20 pins the formatter.
+      *Verify:* `npm test`. *Files:* mod, smoke. *Size:* S
+
+### Checkpoint B
+- [ ] All 26 spec rows pass except the network-marked one
+- [ ] `windowState` is pure — no clock reads inside it
+- [ ] Human review: the row matches the spec's worked example
+
+## Phase 3 — Calendar supply (the CLI side)
+
+- [ ] **T5 — `holidays.mjs`.** Fetch, validate (≥ 5 dates per year, within the year), atomic
+      write, `--out`, the pinned `<N> days for <Y1>, <Y2>` line. Parse a fixture first.
+      *Accept:* a 4-date fixture is refused; the previous file byte-identical.
+      *Verify:* the script with `--out /tmp/x.json`; `npm test`. *Files:* script, install test. *Size:* M
+- [ ] **T6 — the installer step.** Copy the script to `$HOME/.commandcode/scripts/`,
+      best-effort fetch, `--no-holidays`/`PROFLOW_HOLIDAYS=off`, the pinned skip line, manifest record.
+      *Accept:* rows 23/24 pass offline. *Verify:* `npm test`. *Files:* install.mjs, install test. *Size:* M
+- [ ] **T7 — `/proflow --refresh-holidays`.** Bounded 5 s spawn, three pinned lines, extended
+      `argumentHint`, and the inert `deepseek-holidays` value surfaced once in the status message.
+      *Accept:* row 21 passes. *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
+- [ ] **T8 — uninstall scope + docs.** Home removal only when the manifest's scope is `global`;
+      `docs/mod.md` and `docs/install.md` corrected.
+      *Accept:* a `--project` uninstall leaves both files. *Verify:* `npm test`. *Size:* M
+
+### Checkpoint C
+- [ ] All 26 rows pass, connected except the network-marked one
+- [ ] A temp-project install with an isolated `HOME` leaves the expected files
+- [ ] Human review before the release
+
+## Phase 4 — Close
+
+- [ ] **T9 — the citation and the parse source.** Answer Open Q1; record the endpoint with its
+      verification date in `holidays.mjs`; record the policy citation in `docs/mod.md`.
+      *Accept:* a live fetch into a temp `--out` succeeds. *Files:* script, docs. *Size:* S
+- [ ] **T10 — release.** Bump, notes, tag, push, verify on the remote.
+      *Accept:* the published payload carries the mod, the script and the docs. *Size:* S
+
+## Open questions blocking tasks
+
+1. **Fetch endpoint** — gates T9; no guessed URL.
+2. **`holidaysCn` shape and locations** — gates T3 and T5.
+3. **Policy citation** — recorded in `docs/mod.md` (T9).
+4. **Version bump** — 0.2.0 or 0.1.10 (T10).
+5. **Countdown granularity** — the row emits per turn; accept it, or revisit (T4).
