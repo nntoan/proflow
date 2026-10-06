@@ -632,6 +632,11 @@ export default function (cmd: ModApi): void {
 		description: 'Colour the footer (false strips every escape; proflow.jsonc can set this too).',
 	});
 	cmd.addFlag('next-step', {type: 'boolean', default: true, description: 'Show the next lifecycle step.'});
+	cmd.addFlag('gate', {
+		type: 'boolean',
+		default: true,
+		description: 'Force a continuation when a gated run ends without asking (measured cache-safe: 93% prefix reads).',
+	});
 	cmd.addFlag('deepseek', {type: 'boolean', default: true, description: 'Show the peak/off-peak cost window.'});
 	cmd.addFlag('deepseek-window', {
 		type: 'string',
@@ -836,8 +841,32 @@ export default function (cmd: ModApi): void {
 		refresh();
 	});
 
+	// The question-tool gate. The commands and skills tell the model to put a
+	// decision to the user with the question tool; when a lifecycle workflow is
+	// active and a run ends without it, `onStop` forces the run onward with a
+	// reason, so the model is told rather than silently stopping. `reason` is
+	// APPENDED by the harness as an automated stop_hook user turn, so the cached
+	// prompt prefix stays byte-identical and only the new turn is paid for —
+	// never `appendSystemPrompt` or a tool-result rewrite, which would move a byte
+	// inside the prefix. Capped like the shipped example.
+	let askedThisRun = false;
+	let gateNudges = 0;
+	const QUESTION_TOOLS = new Set(['ask_user_question', 'AskUserQuestion']);
+	const GATE_REASON =
+		'The decision is still open: put it to the user with the question tool (the choices, not prose) ' +
+		'before continuing, then act on the answer.';
+
+	cmd.on('run_start', () => {
+		askedThisRun = false;
+		gateNudges = 0;
+	});
+
 	cmd.hooks({
 		beforeToolCall: async ({toolName, input}) => {
+			if (QUESTION_TOOLS.has(toolName)) {
+				askedThisRun = true;
+				return undefined;
+			}
 			const mode = String(cmd.getFlag('guard') ?? 'all');
 			if (mode === 'off') return undefined;
 			if (toolName !== 'shell_command' && toolName !== 'Bash') return undefined;
@@ -859,6 +888,21 @@ export default function (cmd: ModApi): void {
 					`Blocked by the proflow guard — this command can destroy the machine or leak secrets:\n${command}\n` +
 					'Ask the user to run it themselves if it is truly intended.',
 			};
+		},
+		// The force-continue half. Fires only when a run would end naturally, so it
+		// never fights a hard stop; `active` is the lifecycle signal the
+		// activate_skill handler above already sets, so an idle session is untouched.
+		onStop: ({stopReason}) => {
+			if (cmd.getFlag('gate') !== true) return undefined;
+			// Headless runs withhold the question tool by default, so never push the
+			// model at a tool this session does not have.
+			const available = typeof cmd.getActiveTools === 'function' ? cmd.getActiveTools() : [];
+			if (!available.some(name => QUESTION_TOOLS.has(name))) return undefined;
+			if (stopReason !== 'end_turn') return undefined;
+			if (!active || askedThisRun) return undefined;
+			if (gateNudges >= 2) return {continue: false};
+			gateNudges += 1;
+			return {continue: true, reason: GATE_REASON};
 		},
 		onSessionEnd: () => cmd.ui.setStatus(null),
 	});

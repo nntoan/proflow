@@ -101,7 +101,7 @@ check('registers /proflow and nothing else', () => {
 	assert.deepEqual([...commands.keys()], ['proflow']);
 	assert.deepEqual(
 		[...flags.keys()].sort(),
-		['colour', 'deepseek', 'deepseek-holidays', 'deepseek-model', 'deepseek-window', 'footer', 'guard', 'next-step'],
+		['colour', 'deepseek', 'deepseek-holidays', 'deepseek-model', 'deepseek-window', 'footer', 'gate', 'guard', 'next-step'],
 	);
 });
 
@@ -157,6 +157,22 @@ check('guard=off disables everything', async () => {
 	flags.set('guard', 'off');
 	assert.equal(await guard('rm -rf /'), undefined);
 	flags.set('guard', 'all');
+});
+
+check('the question-tool gate is registered and never fights a hard stop', () => {
+	const stop = hooksOf().onStop;
+	assert.equal(typeof stop, 'function', 'onStop must be registered');
+	assert.equal(stop({stopReason: 'max_turns'}), undefined, 'a hard stop must never be continued');
+	assert.equal(stop({stopReason: 'end_turn'}), undefined, 'an idle session must not be nudged');
+});
+
+check('a question-tool call passes through and marks the run as asked', async () => {
+	const result = await hooksOf().beforeToolCall({
+		toolCallId: 't',
+		toolName: 'ask_user_question',
+		input: {},
+	});
+	assert.equal(result, undefined, 'the question tool itself must never be blocked');
 });
 
 check('a project proflow.jsonc adds a rule and can waive a built-in', async () => {
