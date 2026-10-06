@@ -88,9 +88,16 @@ export function lateRules() {
 }
 
 /** Apply the generic rules, bare backticked skill-name namespacing, then the late rules. */
-export function transform(text, skillNames) {
+export function transform(text, skillNames, file = '') {
 	let out = text;
 	for (const [pattern, replace] of genericRules()) out = out.replace(pattern, replace);
+	// The bare namespace form — a `case` label, a `startswith(...)` argument, an
+	// elided `/magento2-tools:…` — is any `magento2-tools:` with no skill name
+	// after the colon, so the named rule above never sees it. `guard-docs-path.sh`
+	// is the one file allowed to keep the namespace, so it is exempt.
+	if (!/guard-docs-path\.sh$/.test(file)) {
+		out = out.replace(/magento2-tools:(?![a-z0-9-])/g, skillPrefix);
+	}
 	for (const name of skillNames) out = out.split(`\`${name}\``).join(`\`${skillPrefix}${name}\``);
 	for (const [pattern, replace] of lateRules()) out = out.replace(pattern, replace);
 	return out;

@@ -74,11 +74,13 @@ try {
 		});
 	}
 
-	// Hooks — adapted for Command Code's tool ids + env.
+	// Hooks — adapted for Command Code's tool ids + env. The source path is
+	// threaded through so the transform can exempt the one file allowed to keep
+	// upstream's namespace.
 	const hooks = list(join(stage, 'hooks')).filter(file => file.endsWith('.sh'));
 	copyTree(join(stage, 'hooks'), join(OUT, 'hooks'), {
 		exclude: ['hooks.json'],
-		transform: text => m2.adaptHook(withGeneric(text)),
+		transform: (text, from) => m2.adaptHook(m2.transform(text, skillNames, from)),
 	});
 
 	// Upstream's own license, kept verbatim beside proflow's (which covers the
