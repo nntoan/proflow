@@ -178,13 +178,13 @@ except Exception:
 print(v if isinstance(v, str) else '')
 " 2>/dev/null || echo "")
     case "$raw_mode" in
-        agents|inline)
+        agents|inline|auto)
             EXECUTION_MODE="$raw_mode"
             EXECUTION_MODE_SRC=".commandcode/m2.json:execution_mode"
             ;;
         "") ;;
         *)
-            EXECUTION_MODE_SRC="unresolved: .commandcode/m2.json \"execution_mode\" is \"${raw_mode}\"; expected \"agents\" or \"inline\""
+            EXECUTION_MODE_SRC="unresolved: .commandcode/m2.json \"execution_mode\" is \"${raw_mode}\"; expected \"agents\", \"inline\" or \"auto\""
             ;;
     esac
 fi
@@ -895,7 +895,7 @@ cat > "$CACHE_TMP" <<EOF
 {
   "schemaVersion": "1.0",
   "skill": "context",
-  "skillVersion": "1.15.0",
+  "skillVersion": "1.16.0",
   "resolvedAt": "${TIMESTAMP}",
   "cacheKey": $(json_or_null "$CACHE_KEY"),
 

@@ -1,6 +1,6 @@
 ---
 name: m2-context
-version: 1.15.0
+version: 1.16.0
 description: >-
     Resolve Magento 2 project context — vendor prefix, edition, Magento version, PHP version, shell runner (Docker vs bare PHP), Magento CLI, active theme, and available quality tools. Use this skill from every other magento2-* skill to capture a single source of truth for project context. Emits a JSON document; caches to .commandcode/.cache/context.json keyed by composer.lock hash. Library skill — consumed by other skills, rarely invoked directly by humans.
 ---

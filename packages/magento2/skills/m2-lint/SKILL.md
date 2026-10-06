@@ -30,6 +30,7 @@ and reports residual violations as ranked findings. Unlike `m2-review`
   (`outputKind = quality`).
 - **Coding standard.** The enforcement gate is `--standard=Magento2` phpcs. See
   `context/references/php-coding-style.md` for the full style rules.
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
 
 ## Workflow
 

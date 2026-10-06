@@ -1,8 +1,13 @@
 ---
 name: m2-fix
-version: 1.3.0
+version: 1.4.0
 description: >-
-    End-to-end Magento 2 bug-fix workflow. Use when the user reports a defect, error, crash, exception, unexpected behaviour, or regression in an existing Magento 2 module. Drives: reproduce → root-cause analysis → minimal patch → regression test → review → optional deploy → report. Requires explicit user approval at the RCA gate before any code change. Calls m2-review (diff mode) after the fix and m2-deploy when authorized. Also accepts an already-diagnosed finding from a report via --from-finding=<report.json>#<id>, which pre-fills the diagnosis and lets m2-remediate own the approval gate; m2-triage produces those plans from a m2-audit report.
+  End-to-end Magento 2 bug-fix workflow. Use when the user reports a defect, error, crash,
+  exception, unexpected behaviour, or regression in an existing module. Requires user approval at
+  the RCA gate before any code change. Calls m2-review, and m2-deploy only
+  when authorized. Accepts a diagnosed finding via --from-finding=<report.json>#<id>;
+  m2-remediate then owns the gate (plans: m2-triage on a
+  m2-audit report).
 ---
 
 # Magento 2 Bug Fix
@@ -56,6 +61,8 @@ root-cause analysis, the minimal fix, a regression test, and review across eight
   frames, ACL/escaping/EQP). Unlike `m2-feature`, bug-fix has **no** sanctioned
   defer-if-present hand-wave — it is surgical and single-threaded, so there is nothing to defer.
   The governing policy and the reasons are in `context/references/process-skills.md`.
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
+- **After a context compaction,** re-read the reference for the phase in progress before continuing.
 
 ## Workflow
 
@@ -139,7 +146,8 @@ Goal: locate the exact code line(s) responsible.
    surfaced as `{ctx.execution_mode}` — selection contract in
    `context/references/execution-modes.md`), delegate this
    path-tracing to the read-only `m2-explorer` agent and work from its comprehension map;
-   default is **inline**. The RCA approval gate below always runs in the main
+   default is **auto** (`agents` when the plugin's context-budget hook reports this conversation
+   above its threshold, `inline` otherwise). The RCA approval gate below always runs in the main
    conversation, in either mode.
 2. For each frame: is the call legitimate? Does it return the expected value?
 3. Identify the first frame where behaviour diverges from intent.
@@ -239,15 +247,8 @@ already in):
 
 ## Edge Cases
 
-| Case                                                              | Behaviour                                                                                                                      |
-|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| Bug in vendor/ third-party module                                 | RCA proceeds; fix proposed as a plugin/observer in a project module, not as a vendor edit.                                     |
-| Bug in Magento core                                               | Same: plugin/observer in a project module. Never edit `vendor/magento/`.                                                       |
-| Bug spans ≥ 2 modules                                             | Per-task commits; RCA covers each module separately; one report.                                                               |
-| Bug can't be reproduced                                           | Phase 2 fails after 2 attempts; report "cannot reproduce" with all evidence collected.                                         |
-| Fix requires a **schema** change (`db_schema.xml`)                | Stop; redirect to `feature --mode=extend`. Bug-fix is for code-only changes.                                |
-| Fix requires a **data** repair (correct corrupted rows, backfill) | Stays in-skill: write an idempotent data patch via `m2-data-migration`; the regression test asserts the corrected state. |
-| Bug is in a config file only                                      | Config/XSD-validation waiver applies (see Core Rules); document why no PHPUnit test in the RCA.                                |
+Never edit `vendor/` or `vendor/magento/` — fix via a plugin/observer in a project module. A **schema** change (`db_schema.xml`) stops the fix and redirects to `feature --mode=extend`; a **data** repair stays in-skill via `m2-data-migration`.
+**Read `references/edge-cases.md` from Phase 1 onward** (cases: vendor/core bug, multi-module, cannot reproduce, schema, data repair, config-only).
 
 ## Inputs
 
@@ -293,6 +294,7 @@ Plus per-task git commits per `references/commit-format.md`.
 
 ## Reference Files
 
+- `references/edge-cases.md` — edge-case behaviour table (vendor/core bug, multi-module, cannot reproduce, schema/data/config-only).
 - `references/log-targets.md` — bug-fix log-collection specifics; defers to the shared
   `debug/references/log-locations.md` for the canonical log-path catalogue.
 - `references/reproduction-patterns.md` — HTTP / CLI / cron / queue / GraphQL recipes.

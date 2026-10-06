@@ -2,7 +2,12 @@
 name: m2-breeze-adapt
 version: 1.0.2
 description: >-
-    Adapt an existing Magento 2 module to Swissup Breeze by generating a separate companion integration module {Vendor}_{Module}Breeze (sequenced after the target + Swissup_Breeze) that holds the Breeze adapter layer — breeze_default.xml JS registration on the breeze.js block, web/css/breeze/_default.less with @critical guards, and Cash $.widget stubs converted from the target's RequireJS/Knockout/jQuery widgets. Never edits the target, so it works on read-only vendor/ modules. Use when the user wants to make a module work with a Breeze theme. Detects Breeze via m2-context (theme.breeze) and refuses with the install command when absent. Unlike m2-extension-point (which wires plugins/observers/preferences onto a class), this builds the Breeze frontend adapter; run m2-breeze-compat first to find what needs adapting. For a new Breeze theme use m2-breeze-theme.
+  Adapt an existing Magento 2 module to Swissup Breeze by generating a companion module
+  {Vendor}_{Module}Breeze that converts RequireJS/Knockout/jQuery widgets to Cash `$.widget`. Never
+  edits the target, so it works on vendor/ modules. Use to make a module work with Breeze (needs
+  m2-context theme.breeze). Unlike m2-extension-point
+  (plugins/observers/preferences), this builds the Breeze adapter; run m2-breeze-compat
+  first. New theme: m2-breeze-theme.
 ---
 
 # Magento 2 Breeze Module Adapt

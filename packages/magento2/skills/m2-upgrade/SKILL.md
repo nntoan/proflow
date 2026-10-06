@@ -2,7 +2,11 @@
 name: m2-upgrade
 version: 1.2.0
 description: >-
-    Upgrade an existing Magento 2 module to a newer Magento version, newer PHP version, or newer framework dependency. Use when the user wants to bump Magento support, update PHP constraints, replace deprecated API usage, or scan for and remediate BC breaks. Drives: deprecation scan → BC-break detection → patch generation → review → test → report. Calls m2-review (diff mode) and m2-test-generate.
+    Upgrade an existing Magento 2 module to a newer Magento version, newer PHP version,
+    or newer framework dependency. Use when the user wants to bump Magento support,
+    update PHP constraints, replace deprecated API usage, or scan for and remediate BC
+    breaks. Drives: deprecation scan → BC-break detection → patch generation → review →
+    test → report. Calls m2-review (diff mode) and m2-test-generate.
 ---
 
 # Magento 2 Module Upgrade
@@ -21,6 +25,7 @@ Bring an existing module up to a newer Magento or PHP target. The change list is
 - **Per-task commits.** Each Rector rule run, each manual edit, each BC-break note is its
   own commit. Reverting one shouldn't lose others.
 - **Test before declare-done.** A passing test suite is the gate to Phase 7.
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
 
 ## Workflow
 

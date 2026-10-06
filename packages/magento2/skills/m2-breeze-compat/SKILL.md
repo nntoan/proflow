@@ -2,7 +2,12 @@
 name: m2-breeze-compat
 version: 1.1.0
 description: >-
-    Read-only static audit of a Magento 2 module's compatibility with Swissup Breeze. Scans for RequireJS config, Knockout/uiComponent usage, jQuery-UI/$.mage widgets, RequireJS mixins, inline require([...]), and data-mage-init/x-magento-init, then emits severity-ranked findings (Markdown + JSON outputKind=compatibility + SARIF, via the shared emitters) plus a verdict — compatible out-of-box, needs Better Compatibility, or needs a manual adapter. Use when the user asks whether a module works with Breeze or wants a pre-launch Breeze compatibility check. Static only — no running instance needed. Detects Breeze via m2-context (theme.breeze). Unlike m2-review (general architecture/quality), this is the Breeze frontend dimension; to actually generate the adapter use m2-breeze-adapt; for a new theme use m2-breeze-theme.
+  Read-only static audit of a Magento 2 module's compatibility with Swissup Breeze. Scans RequireJS,
+  Knockout, jQuery-UI widgets, and mixins; emits ranked findings (Markdown, JSON, SARIF) and a
+  verdict: compatible, needs Better Compatibility, or needs a manual adapter. Use to ask whether a
+  module works with Breeze. Unlike m2-review (general quality), this is the Breeze
+  dimension; generate the adapter with m2-breeze-adapt; new theme:
+  m2-breeze-theme.
 ---
 
 # Magento 2 Breeze Compatibility Audit

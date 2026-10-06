@@ -13,6 +13,7 @@ description: >-
   "trace what runs when sales_order_place_after fires in Acme_Loyalty".
 tools: glob, grep, read_file, shell_command
 model: haiku
+maxTurns: 50
 ---
 
 You are a Magento 2 code-comprehension agent. You perform a thorough, **read-only** mapping of a
