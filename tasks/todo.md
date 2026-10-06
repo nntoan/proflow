@@ -16,9 +16,9 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
 
 ### Checkpoint A
-- [ ] `npm test` green; older window-only rows updated
-- [ ] No behaviour change beyond the weekend rule without a calendar
-- [ ] Human review before the calendar lands
+- [x] `npm test` green; older window-only rows updated
+- [x] No behaviour change beyond the weekend rule without a calendar
+- [x] Human review before the calendar lands
 
 ## Phase 2 — Calendar input and the row
 
@@ -32,9 +32,9 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* S
 
 ### Checkpoint B
-- [ ] All 26 spec rows pass except the network-marked one
-- [ ] `windowState` is pure — no clock reads inside it
-- [ ] Human review: the row matches the spec's worked example
+- [x] All 26 spec rows pass except the network-marked one
+- [x] `windowState` is pure — no clock reads inside it
+- [x] Human review: the row matches the spec's worked example
 
 ## Phase 3 — Calendar supply (the CLI side)
 
@@ -53,16 +53,16 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
       *Accept:* a `--project` uninstall leaves both files. *Verify:* `npm test`. *Size:* M
 
 ### Checkpoint C
-- [ ] All 26 rows pass, connected except the network-marked one
-- [ ] A temp-project install with an isolated `HOME` leaves the expected files
-- [ ] Human review before the release
+- [x] All 26 rows pass, connected except the network-marked one
+- [x] A temp-project install with an isolated `HOME` leaves the expected files
+- [x] Human review before the release
 
 ## Phase 4 — Close
 
 - [x] **T9 — the citation and the parse source.** Answer Open Q1; record the endpoint with its
       verification date in `holidays.mjs`; record the policy citation in `docs/mod.md`.
       *Accept:* a live fetch into a temp `--out` succeeds. *Files:* script, docs. *Size:* S
-- [ ] **T10 — release.** Bump, notes, tag, push, verify on the remote.
+- [x] **T10 — release.** Bump, notes, tag, push, verify on the remote.
       *Accept:* the published payload carries the mod, the script and the docs. *Size:* S
 
 ## Open questions blocking tasks
@@ -82,6 +82,17 @@ unbounded reviewer, and the guard's misleading block message.
 - [x] `tasks/todo.md` is the resume state; box-ticking rides the task's own commit — `patches/commands.mjs`
 - [x] A plan may not invent gates; every task traces to the spec — `patches/agent-skills.mjs`
 - [x] Bound the spec-reviewer's report (~800 words) — `overlays/skills/spec-reflection/SKILL.md`
-- [ ] The guard's block message must name bypass mode and the remedy — `packages/proflow/mods/proflow.ts`
+- [x] The guard's block message must name bypass mode and the remedy — `packages/proflow/mods/proflow.ts`
       *blocked:* its current wording must be read first; it is a mod string, not a vendored one
 - [ ] Upstream request: the harness should warn when an agent declares no `tools:` — not ours to patch
+
+## Still open
+
+- [ ] **The scheduled Vendor drift job is red** (failed 2026-10-05, before this work). Its visible log
+      is setup noise plus a Node 20 deprecation for `actions/checkout@v4` and `actions/setup-node@v4`;
+      the `drift` step's own output needs a wider read to tell upstream drift from my patch `find`
+      strings from the deprecation itself.
+- [ ] **Upstream request:** the harness should warn when an agent declares no `tools:` — five of ours
+      broke silently, and only the harness can catch that class.
+- [ ] **T9's canonical endpoint:** the calendar is seeded from a gov.cn-hosted copy of the notice;
+      the `www.gov.cn` canonical page would be a better fetch source if it is ever worth wiring.
