@@ -55,6 +55,9 @@ export function genericRules() {
 		[/\.claude\/m2\.json/g, '.commandcode/m2.json'],
 		[/\.claude\/\.cache/g, '.commandcode/.cache'],
 		[/\.claude\/settings\.json/g, '.commandcode/settings.json'],
+		// Claude's ask tool id, renamed to the harness's. The transform never mapped it,
+		// so the one gate that named a tool named one that does not exist here.
+		[/\bAskUserQuestion\b/g, 'ask_user_question'],
 		[/\bCLAUDE\.md\b/g, 'AGENTS.md'],
 		// proflow conventions: no stale sibling path into the pre-rename
 		// `context` skill directory.
