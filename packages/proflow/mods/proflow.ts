@@ -543,6 +543,49 @@ export interface CnCalendar {
 	off: Set<string>;
 }
 
+/** A validated calendar. Malformed input yields an empty set — never a partial one. */
+export function calendarFrom(raw: unknown): CnCalendar {
+	const off = new Set<string>();
+	if (!raw || typeof raw !== 'object') return {off};
+	for (const [year, entry] of Object.entries(raw as Record<string, unknown>)) {
+		if (!/^\d{4}$/.test(year)) continue;
+		const dates = (entry as {off?: unknown} | null)?.off;
+		if (!Array.isArray(dates)) continue;
+		for (const date of dates) {
+			// a date outside its own year key is a corrupt row, not a holiday
+			if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && date.startsWith(year)) {
+				off.add(date);
+			}
+		}
+	}
+	return {off};
+}
+
+let cachedCalendar: CnCalendar | null = null;
+
+/**
+ * The calendar from `~/.commandcode/holidays-cn.json` — the single source of truth, exactly as
+ * rates.json is for rates. Read once per process; `invalidateCalendar` is what a refresh calls.
+ * Absent, unreadable or malformed all mean the same thing: an empty set, so the state degrades
+ * to window ∪ weekend and only holidays are lost.
+ */
+export function loadCalendar(home = homedir()): CnCalendar {
+	if (cachedCalendar) return cachedCalendar;
+	try {
+		cachedCalendar = calendarFrom(
+			JSON.parse(readFileSync(join(home, '.commandcode', 'holidays-cn.json'), 'utf8')),
+		);
+	} catch {
+		cachedCalendar = {off: new Set()};
+	}
+	return cachedCalendar;
+}
+
+/** Drop the cache so the next read sees a refreshed file. */
+export function invalidateCalendar(): void {
+	cachedCalendar = null;
+}
+
 export function isOffPeak(
 	now: Date,
 	windows: [number, number][],

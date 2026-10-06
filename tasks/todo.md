@@ -22,7 +22,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 
 ## Phase 2 — Calendar input and the row
 
-- [ ] **T3 — the calendar loader.** Read the home file — the single source of truth, no override —
+- [x] **T3 — the calendar loader.** Read the home file — the single source of truth, no override —
       shape-validated, cached per process, invalidated on refresh.
       *Accept:* rows 1, 3, 4, 11, 13, 15, 16, 19 pass; rows 17/18 degrade; rows 15/16 unchanged.
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
