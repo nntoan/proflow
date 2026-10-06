@@ -1,6 +1,6 @@
 {
 	"name": "@ultra-cmd/proflow",
-	"version": "0.1.13",
+	"version": "0.1.14",
 	"description": "proflow for Command Code — 26 engineering skills, nine lifecycle commands, shared reference checklists, specialist personas, and the proflow harness mod.",
 	"license": "MIT",
 	"type": "commonjs",

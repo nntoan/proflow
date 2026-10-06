@@ -1,6 +1,6 @@
 {
 	"name": "@ultra-cmd/mod-orca",
-	"version": "0.1.13",
+	"version": "0.1.14",
 	"description": "The whole orca CLI for Command Code — read-only calls take the no-prompt fast path (and work in plan mode), writes go through the permission pipeline.",
 	"license": "MIT",
 	"type": "commonjs",
