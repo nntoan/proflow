@@ -58,7 +58,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: code-reviewer\n',
-				with: 'name: code-reviewer\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command',
+				with: 'name: code-reviewer\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command\n',
 			},
 		],
 	},
@@ -68,7 +68,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: security-auditor\n',
-				with: 'name: security-auditor\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command',
+				with: 'name: security-auditor\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command\n',
 			},
 		],
 	},
@@ -78,7 +78,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: web-performance-auditor\n',
-				with: 'name: web-performance-auditor\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command',
+				with: 'name: web-performance-auditor\ntools: "*"\ndisallowedTools: write_file, edit_file, run_command\n',
 			},
 		],
 	},
@@ -88,7 +88,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: test-engineer\n',
-				with: 'name: test-engineer\ntools: "*"',
+				with: 'name: test-engineer\ntools: "*"\n',
 			},
 		],
 	},
