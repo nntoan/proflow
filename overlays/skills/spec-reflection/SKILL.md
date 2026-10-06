@@ -15,7 +15,7 @@ skips, stop: the spec is theirs to approve as written.
 
 ## The loop
 
-1. **Review.** Spawn one `spec-reviewer` subagent against `docs/spec/<id>/` — the `agent` tool with
+1. **Review.** Ask for **findings under ~800 words**. If a section is too large to fit, name it and stop — the caller re-queries that section rather than receiving the whole spec and code back, because an unbounded report exhausts the caller's context and is itself a cause of mid-build stops. Then spawn one `spec-reviewer` subagent against `docs/spec/<id>/` — the `agent` tool with
    `subagent_type: "spec-reviewer"`. Ask it to read `SPEC.md` and `explore-brief.md` and return its
    severity-ranked report: 🔴 Blocking, 🟡 Should fix, 💡 Suggestion.
 2. **Decide with the user, not for them.** For every 🔴 and 🟡 finding, use the question tool to let
