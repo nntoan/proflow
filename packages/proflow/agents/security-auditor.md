@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-tools: glob, grep, read_file, shell_command
+tools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status
 description: Security engineer focused on vulnerability detection, threat modeling, and secure coding practices. Use for security-focused code review, threat analysis, or hardening recommendations.
 ---
 

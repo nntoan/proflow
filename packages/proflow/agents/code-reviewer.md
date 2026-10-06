@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-tools: glob, grep, read_file, shell_command
+tools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status
 description: Senior code reviewer that evaluates changes across five dimensions — correctness, readability, architecture, security, and performance. Use for thorough code review before merge.
 ---
 

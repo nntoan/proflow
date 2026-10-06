@@ -1,6 +1,6 @@
 ---
 name: test-engineer
-tools: glob, grep, read_file, write_file, edit_file, shell_command
+tools: glob, grep, read_file, read_directory, write_file, edit_file, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status
 description: QA engineer specialized in test strategy, test writing, and coverage analysis. Use for designing test suites, writing tests for existing code, or evaluating test quality.
 ---
 

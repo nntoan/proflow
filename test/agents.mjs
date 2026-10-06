@@ -12,7 +12,7 @@ import {fileURLToPath} from 'node:url';
 
 const DIR = fileURLToPath(new URL('../packages/proflow/agents/', import.meta.url));
 const PATCHES = fileURLToPath(new URL('../patches/agent-skills.mjs', import.meta.url));
-const VALID = new Set(['glob', 'grep', 'read_file', 'write_file', 'edit_file', 'shell_command']);
+const VALID = new Set(['glob', 'grep', 'read_file', 'read_directory', 'write_file', 'edit_file', 'shell_command', 'mcp__codegraph__codegraph_explore', 'mcp__codegraph__codegraph_node', 'mcp__codegraph__codegraph_status']);
 const AGENTS = ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor'];
 
 const checks = [];
@@ -53,7 +53,7 @@ try {
 		for (const name of ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor']) {
 			assert.ok(patch.includes(`agents/${name}.md`), `patches/agent-skills.mjs must patch agents/${name}.md`);
 		}
-		assert.match(patch, /tools: glob, grep, read_file, shell_command/, 'the patch must carry the tool lists');
+		assert.match(patch, /tools: glob, grep, read_file, read_directory/, 'the patch must carry the tool lists');
 	});
 	check('the agent we own is an overlay, and declares its tools there', () => {
 		// Not vendored any more: upstream dropped it, and the sync applies patches before restoring
