@@ -190,4 +190,12 @@ export default [
 			},
 		],
 	},
+
+	// The stop rule was a blank cheque; plan review satisfies the checkpoint; todo.md is the resume state.
+	{file: 'commands/build.md', replaces: [
+			{find: 'or a task needs a decision the spec doesn\'t cover', with: 'or a task blocks on a **spec open question** (name it when you stop, and never stop for an answer the spec already records)'},
+			{find: 'Present the full plan and wait for an unambiguous affirmative', with: 'Approval already given through plan review or plan_review satisfies this — detect it and proceed without re-asking. Otherwise present the full plan and wait for an unambiguous affirmative'},
+			{find: 'it resumes from the next pending task', with: 'it resumes from the next pending task. `tasks/todo.md` **is** the resume state: the first unchecked box is the next task, a re-invocation prints what it is resuming at and continues without re-approval, and ticking a box belongs to that task\'s own commit so the state cannot drift from the code'},
+			{find: '**Stop and ask the user** (do not push through) when:', with: '**Stop and ask the user** (do not push through) when — and if you cannot continue for a **resource reason** (context, budget), say exactly that rather than presenting it as a process gate:'},
+	]},
 ];

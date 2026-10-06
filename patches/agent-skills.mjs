@@ -102,4 +102,9 @@ export default [
 			},
 		],
 	},
+
+	// Every task traces to the spec; every gate to a spec open question.
+	{file: 'skills/planning-and-task-breakdown/SKILL.md', replaces: [
+			{find: '**Never overwrite an incomplete plan.**', with: '**Every task traces to the spec; every gate traces to a spec open question.** A plan that blocks a task on something the spec does not list as an open question is invalid — that is how an invented requirement becomes a false dependency, and it has already happened once here.\n\n**Never overwrite an incomplete plan.**'},
+	]},
 ];
