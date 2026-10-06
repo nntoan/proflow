@@ -1,6 +1,6 @@
 {
 	"name": "@ultra-cmd/mod-codegraph",
-	"version": "0.1.12",
+	"version": "0.1.13",
 	"description": "Read-only CodeGraph tools for Command Code — explore, node and status from the codegraph CLI, available in plan mode.",
 	"license": "MIT",
 	"type": "commonjs",
