@@ -194,8 +194,16 @@ export default [
 	// The stop rule was a blank cheque; plan review satisfies the checkpoint; todo.md is the resume state.
 	{file: 'commands/build.md', replaces: [
 			{find: 'or a task needs a decision the spec doesn\'t cover', with: 'or a task blocks on a **spec open question** (name it when you stop, and never stop for an answer the spec already records)'},
-			{find: 'Present the full plan and wait for an unambiguous affirmative', with: 'Approval already given through plan review or plan_review satisfies this — detect it and proceed without re-asking. Otherwise present the full plan and wait for an unambiguous affirmative'},
-			{find: 'it resumes from the next pending task', with: 'it resumes from the next pending task. `tasks/todo.md` **is** the resume state: the first unchecked box is the next task, a re-invocation prints what it is resuming at and continues without re-approval, and ticking a box belongs to that task\'s own commit so the state cannot drift from the code. **Also drive the harness\'s `todo_write` tool** so the user watches the list move — and send the *complete* list every time, because each call replaces it whole and a partial one silently drops the tasks you left out'},
+			{find: 'Present the full plan and wait for an unambiguous affirmative', with: 'Approval already given through plan review or plan_review satisfies this — detect it and proceed without re-asking. Otherwise ask for approval **with the question tool** — approve, revise, or reject. Ending a turn with a question in text is a stop, and a stop with an open objective is not allowed'},
+			{find: 'it resumes from the next pending task', with: 'it resumes from the next pending task. `tasks/todo.md` **is** the resume state: the first unchecked box is the next task, a re-invocation prints what it is resuming at and continues without re-approval, and ticking a box belongs to that task\'s own commit so the state cannot drift from the code. On any stop in auto mode, ask **with the question tool** what to do next — retry, skip the task, adjust the plan, or stop — and continue on the answer; re-invoking the command is a fallback, not the mechanism. **Also drive the harness\'s `todo_write` tool** so the user watches the list move — and send the *complete* list every time, because each call replaces it whole and a partial one silently drops the tasks you left out'},
 			{find: '**Stop and ask the user** (do not push through) when:', with: '**Stop and ask the user** (do not push through) when — and **never stop for a resource reason**: the harness compacts and continues, so an exhausted context is not a blocker and must never be presented as one. Only a real blocker stops the run — asked with the question tool — and after the answer the run continues to the end:'},
+	]},
+
+	// Two sentences no earlier rule touches, so they append cleanly. Everything else is folded
+	// into the entry that already owned it: two rules for one sentence collide, because the second
+	// cannot find what the first replaced.
+	{file: 'commands/build.md', replaces: [
+			{find: 'If none exists, stop and tell the user to run `/spec` first — do not invent requirements.', with: 'If none exists, ask **with the question tool** whether to run `/spec` now, and run it — do not end the turn telling them to, and do not invent requirements.'},
+			{find: '8. Mark the task complete and stop', with: '8. Mark the task complete, then ask **with the question tool** whether to continue to the next task, review first, or stop — the question goes in the tool, never in text, so the run neither ends mid-objective nor waits for you to notice it ended'},
 	]},
 ];
