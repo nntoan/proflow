@@ -115,3 +115,11 @@ never listed, and cannot cancel a weekend: the weekend rule stands regardless.
 `deepseek-holidays` is **ignored**. It was registered but never read, and "extra peak dates" is
 the opposite concept; the flag remains so a config that sets it is not a hard failure, and the
 `/proflow` status says so when a value is present.
+
+### The countdown is a snapshot
+
+The row is rendered once per turn, so `peak in 96:33:00` is as old as the turn it was printed in —
+up to a turn stale by the time it is read. That is accepted rather than fixed: the alternative is
+re-rendering the footer or the feed row far more often than a turn, which costs more than the
+staleness it removes, and the number the row reports is a *duration to the next price change*, not a
+clock. It stays honest as long as nobody reads it as a timestamp.
