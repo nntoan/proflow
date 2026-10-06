@@ -701,7 +701,6 @@ export default function (cmd: ModApi): void {
 	const persistSessionCounters = (): void => {
 		cmd.session?.appendCustomEntry({customType: CACHE_ENTRY, data: {read: sessionRead, total: sessionTotal}});
 	};
-	seedSessionCounters();
 
 	const refresh = (): void => {
 		if (!cmd.ui.capabilities.status) return;
@@ -792,8 +791,19 @@ export default function (cmd: ModApi): void {
 
 	// A turn's cost is the sum of the requests inside it: the bucket resets when a
 	// turn starts, and the previous turn's value stays visible until the next one.
+	// `cmd.session` is undefined while the factory runs and bound only once the harness binds
+	// it, so the counters are seeded on the first turn — or on the first usage report if one
+	// arrives first, which is how a resumed session reports. One-shot: seeding again would
+	// clobber the in-memory totals. This is the documented reload pattern.
+	let seeded = false;
+	const ensureSeeded = (): void => {
+		if (seeded) return;
+		seeded = true;
+		seedSessionCounters();
+	};
 	cmd.on('turn_start', () => {
 		turnCost = 0;
+		ensureSeeded();
 	});
 
 	// Once per turn: keep the cost window visible in the feed (a feed row cannot
@@ -814,6 +824,7 @@ export default function (cmd: ModApi): void {
 	// harness estimates it only when writing the session, so we replicate that
 	// estimator from the tokens and the registry rates.
 	cmd.on('model_request_end', payload => {
+		ensureSeeded();
 		const usage = (payload.usage ?? {}) as Record<string, number>;
 		const read = usage.cacheReadTokens ?? usage.cacheReadInputTokens ?? usage.cache_read_input_tokens ?? 0;
 		const written = usage.cacheWriteTokens ?? usage.cacheCreationInputTokens ?? usage.cache_creation_input_tokens ?? 0;
