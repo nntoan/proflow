@@ -8,10 +8,10 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 
 ## Phase 1 — Foundation (the resolver, calendar-free)
 
-- [ ] **T1 — CN calendar primitives.** `cnDateOf` (UTC+8, no DST) and `isCnWeekend`, exported.
+- [x] **T1 — CN calendar primitives.** (930ad14) `cnDateOf` (UTC+8, no DST) and `isCnWeekend`, exported.
       *Accept:* the 16:00Z boundary maps to the right CN date; 2026-10-03 → Sat, 2026-10-05 → Mon.
       *Verify:* `node test/smoke.mjs`. *Files:* mod, smoke. *Size:* S
-- [ ] **T2 — `windowState` + the countdown search.** Replace `nextFlip`; window ∪ weekend only.
+- [x] **T2 — `windowState` + the countdown search.** (3c70975) Replace `nextFlip`; window ∪ weekend only.
       *Accept:* spec rows 2, 5, 6, 8, 9, 10, 12, 14, 17 pass under the default window.
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
 
@@ -71,3 +71,17 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 2. **Policy citation** — recorded in `docs/mod.md` (T9).
 3. **Version bump** — 0.2.0 or 0.1.10 (T10).
 4. **Countdown granularity** — the row emits per turn; accept it, or revisit (T4).
+
+## Workflow fixes (from the `/build auto` review)
+
+These are the fixes for the stops themselves — the stop rule, the missing resume state, the
+unbounded reviewer, and the guard's misleading block message.
+
+- [x] Bound `/build`'s stop rule (no invented gates, resource limits stated as such) — `patches/commands.mjs`
+- [x] One checkpoint: plan review satisfies it — `patches/commands.mjs`
+- [x] `tasks/todo.md` is the resume state; box-ticking rides the task's own commit — `patches/commands.mjs`
+- [x] A plan may not invent gates; every task traces to the spec — `patches/agent-skills.mjs`
+- [x] Bound the spec-reviewer's report (~800 words) — `overlays/skills/spec-reflection/SKILL.md`
+- [ ] The guard's block message must name bypass mode and the remedy — `packages/proflow/mods/proflow.ts`
+      *blocked:* its current wording must be read first; it is a mod string, not a vendored one
+- [ ] Upstream request: the harness should warn when an agent declares no `tools:` — not ours to patch
