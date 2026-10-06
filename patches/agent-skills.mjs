@@ -52,10 +52,6 @@ export default [
 	},
 
 	// Agents whose job needs the tool list declared, per the note above.
-	// NOTE: agents/spec-reviewer.md is NOT patchable. Upstream stopped shipping it, and the
-	// sync applies patches *before* restoring overlays, against the freshly vendored tree — so a
-	// patch for that path can only fail, which is what broke every sync and the drift check from
-	// 2026-10-05. The agent is ours: it lives in overlays/agents/ and declares its tools there.
 	{
 		file: 'agents/code-reviewer.md',
 		// Reads a diff and the surrounding code; never writes.

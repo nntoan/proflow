@@ -13,7 +13,7 @@ import {fileURLToPath} from 'node:url';
 const DIR = fileURLToPath(new URL('../packages/proflow/agents/', import.meta.url));
 const PATCHES = fileURLToPath(new URL('../patches/agent-skills.mjs', import.meta.url));
 const VALID = new Set(['glob', 'grep', 'read_file', 'write_file', 'edit_file', 'shell_command']);
-const AGENTS = ['spec-reviewer', 'code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor'];
+const AGENTS = ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor'];
 
 const checks = [];
 const check = (name, fn) => {
@@ -50,11 +50,19 @@ try {
 
 	check('the declarations are declarative, so a sync cannot undo them', () => {
 		const patch = readFileSync(PATCHES, 'utf8');
-		for (const name of AGENTS) {
+		for (const name of ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor']) {
 			assert.ok(patch.includes(`agents/${name}.md`), `patches/agent-skills.mjs must patch agents/${name}.md`);
 		}
 		assert.match(patch, /tools: glob, grep, read_file, shell_command/, 'the patch must carry the tool lists');
 	});
+	check('the agent we own is an overlay, and declares its tools there', () => {
+		// Not vendored any more: upstream dropped it, and the sync applies patches before restoring
+		// overlays, so a patch for that path can only fail.
+		const overlay = readFileSync(fileURLToPath(new URL('../overlays/agents/spec-reviewer.md', import.meta.url)), 'utf8');
+		assert.match(overlay, /^tools: .*read_file/m, 'the overlay must declare its tools');
+		assert.ok(!readFileSync(PATCHES, 'utf8').includes('agents/spec-reviewer.md'), 'and no patch may target it');
+	});
+
 } catch (error) {
 	failed = true;
 	console.error(`  \u001b[31m✗\u001b[0m ${error.message}`);
