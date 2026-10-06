@@ -21,3 +21,5 @@ with the Chrome DevTools MCP server when it is configured.
 
 Report the evidence: the command you ran, the failing output before the fix, the passing
 output after, and the regression-suite result. "Looks right" is not evidence.
+
+Then ask **with the question tool** what to do about anything still failing — fix it now, file it, or stop — rather than ending the turn on the report. A failure list is not a conclusion.

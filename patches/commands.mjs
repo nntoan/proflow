@@ -206,4 +206,14 @@ export default [
 			{find: 'If none exists, stop and tell the user to run `/spec` first — do not invent requirements.', with: 'If none exists, ask **with the question tool** whether to run `/spec` now, and run it — do not end the turn telling them to, and do not invent requirements.'},
 			{find: '8. Mark the task complete and stop', with: '8. Mark the task complete, then ask **with the question tool** whether to continue to the next task, review first, or stop — the question goes in the tool, never in text, so the run neither ends mid-objective nor waits for you to notice it ended'},
 	]},
+
+	// /ship: accepting a risk is a question, not a sentence to read.
+	{file: 'commands/ship.md', replaces: [
+			{find: 'the default verdict is NO-GO unless the user explicitly accepts the risk.', with: 'the default verdict is NO-GO. Accepting the risk is **not** something the user does by reading text — ask **with the question tool**: fix the finding, accept the risk and proceed, or abort. A verdict left in prose is a run that stops at the moment it most needs an answer.'},
+	]},
+
+	// /test: a failure list is not a conclusion.
+	{file: 'commands/test.md', replaces: [
+			{find: '"Looks right" is not evidence.', with: '"Looks right" is not evidence.\n\nThen ask **with the question tool** what to do about anything still failing — fix it now, file it, or stop — rather than ending the turn on the report. A failure list is not a conclusion.'},
+	]},
 ];

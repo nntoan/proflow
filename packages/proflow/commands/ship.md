@@ -64,5 +64,5 @@ Produce a single output:
 1. The three Phase A personas run in parallel — never sequentially.
 2. Personas do not call each other. The main agent merges in Phase B.
 3. The rollback plan is mandatory before any GO decision.
-4. If any persona returns a Critical finding, the default verdict is NO-GO unless the user explicitly accepts the risk.
+4. If any persona returns a Critical finding, the default verdict is NO-GO. Accepting the risk is **not** something the user does by reading text — ask **with the question tool**: fix the finding, accept the risk and proceed, or abort. A verdict left in prose is a run that stops at the moment it most needs an answer.
 5. **Skip the fan-out only if all of the following are true:** the change touches 2 files or fewer, the diff is under 50 lines, and it does not touch auth, payments, data access, or config/env. Otherwise, default to fan-out. `/ship` is designed for production-bound changes — when the blast radius is non-trivial, run the parallel review even if the diff looks small.
