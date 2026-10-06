@@ -1,6 +1,6 @@
 {
 	"name": "proflow-workspace",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"private": true,
 	"description": "Development workspace for proflow — the installer, the agent-skills payload, and the optional tool mods.",
 	"license": "MIT",
