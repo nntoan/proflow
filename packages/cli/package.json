@@ -1,6 +1,6 @@
 {
   "name": "@nntoan/proflow",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Installer for proflow — provisions the Command Code agent-skills pack (commands, skills, references, personas) and the optional tool mods, interactively or with flags.",
   "license": "MIT",
   "type": "module",
@@ -26,11 +26,11 @@
   ],
   "dependencies": {
     "@clack/prompts": "^1.8.1",
-    "@ultra-cmd/magento2": "0.1.9",
-    "@ultra-cmd/mod-codegraph": "0.1.9",
-    "@ultra-cmd/mod-gh": "0.1.9",
-    "@ultra-cmd/mod-orca": "0.1.9",
-    "@ultra-cmd/proflow": "0.1.9"
+    "@ultra-cmd/magento2": "0.1.10",
+    "@ultra-cmd/mod-codegraph": "0.1.10",
+    "@ultra-cmd/mod-gh": "0.1.10",
+    "@ultra-cmd/mod-orca": "0.1.10",
+    "@ultra-cmd/proflow": "0.1.10"
   },
   "engines": {
     "node": ">=22.13"
