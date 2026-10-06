@@ -234,7 +234,11 @@ check('the cost window row is emitted once per turn, unlabelled and coloured', (
 	notices.length = 0;
 	handlers.get('turn_end')();
 	assert.equal(notices.length, 1, `expected one row per turn, got: ${notices.join(' | ')}`);
-	assert.match(notices[0], /\u001b\[(32|33)m(off-peak \(−50%\) — peak in|PEAK — off-peak in) \d/);
+	assert.match(
+		notices[0],
+		/\u001b\[(31|32)m(off-peak \(−50%\) — peak in|PEAK — off-peak in) \d{1,3}:\d{2}:\d{2}/,
+		`the row carries an H:MM:SS countdown and a 31|32 colour: ${notices[0]}`,
+	);
 	assert.doesNotMatch(notices[0], /^\[/, 'the harness labels rows with the mod name; we add no second label');
 	assert.doesNotMatch(notices[0], /deepseek/i, 'and no provider prefix of ours');
 });
@@ -339,8 +343,11 @@ check('the peak window maths hold', () => {
 	assert.equal(mod.inWindow(90, windows), true);
 	assert.equal(mod.inWindow(300, windows), false);
 	assert.equal(mod.inWindow(30, windows), false);
-	assert.equal(mod.formatMinutes(134), '2h 14m');
-	assert.equal(mod.formatMinutes(45), '45m');
+	assert.equal(mod.formatDuration(0), '00:00:00');
+	assert.equal(mod.formatDuration(59000), '00:00:59');
+	assert.equal(mod.formatDuration(359999 * 1000), '99:59:59');
+	assert.equal(mod.formatDuration(360000 * 1000), '100:00:00');
+	assert.equal(mod.formatDuration(134 * 60 * 1000), '02:14:00');
 });
 
 const passed = [];

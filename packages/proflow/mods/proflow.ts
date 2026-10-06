@@ -521,19 +521,6 @@ export function inWindow(now: number, windows: [number, number][]): boolean {
 	return windows.some(([from, to]) => (from <= to ? now >= from && now < to : now >= from || now < to));
 }
 
-/** Whether we are inside a window now, and the minutes until the next boundary. */
-export function nextFlip(now: number, windows: [number, number][]): {inPeak: boolean; minutes: number} {
-	const inPeak = inWindow(now, windows);
-	let best = Infinity;
-	for (const [from, to] of windows) {
-		for (const edge of [from, to]) {
-			const delta = (edge - now + 1440) % 1440 || 1440;
-			if (delta < best) best = delta;
-		}
-	}
-	return {inPeak, minutes: best === Infinity ? 0 : best};
-}
-
 /**
  * The state at an instant. The calendar is a parameter, defaulting to empty, so the
  * resolver is provable before any fetching exists — and so a machine with no calendar
@@ -620,11 +607,13 @@ export function nextChange(
 	return 0; // nothing changes within the horizon: nothing sensible to promise
 }
 
-export function formatMinutes(minutes: number): string {
-	if (minutes <= 0) return 'now';
-	const h = Math.floor(minutes / 60);
-	const m = Math.round(minutes % 60);
-	return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+/** Milliseconds as `H:MM:SS`. Hours may exceed two digits — a long holiday needs it. */
+export function formatDuration(ms: number): string {
+	const total = Math.max(0, Math.round(ms / 1000));
+	const h = Math.floor(total / 3600);
+	const m = Math.floor((total % 3600) / 60);
+	const s = total % 60;
+	return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 // ── The mod ────────────────────────────────────────────────────────────────────
@@ -756,11 +745,11 @@ export default function (cmd: ModApi): void {
 		const windows = parseWindows(String(cmd.getFlag('deepseek-window') ?? ''));
 		if (windows.length === 0) return '';
 		const now = new Date();
-		const {inPeak, minutes} = nextFlip(now.getUTCHours() * 60 + now.getUTCMinutes(), windows);
-		const text = inPeak
-			? `PEAK — off-peak in ${formatMinutes(minutes)}`
-			: `off-peak (−50%) — peak in ${formatMinutes(minutes)}`;
-		return paint(text, inPeak ? YELLOW : GREEN);
+		const calendar = loadCalendar();
+		const offPeak = isOffPeak(now, windows, calendar);
+		const until = formatDuration(nextChange(now, windows, calendar));
+		const text = offPeak ? `off-peak (−50%) — peak in ${until}` : `PEAK — off-peak in ${until}`;
+		return paint(text, offPeak ? GREEN : RED);
 	};
 
 	// Active = proflow is actually in use: a lifecycle skill ran, or the tree

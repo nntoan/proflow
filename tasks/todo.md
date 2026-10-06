@@ -26,7 +26,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
       shape-validated, cached per process, invalidated on refresh.
       *Accept:* rows 1, 3, 4, 11, 13, 15, 16, 19 pass; rows 17/18 degrade; rows 15/16 unchanged.
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
-- [ ] **T4 — `formatDuration` and the row.** `H:MM:SS`; PEAK red `\u001b[31m`, off-peak green
+- [x] **T4 — `formatDuration` and the row.** `H:MM:SS`; PEAK red `\u001b[31m`, off-peak green
       `\u001b[32m`; the row regex `32|33` → `31|32`.
       *Accept:* rows 1/2/8/9 pin the codes; row 20 pins the formatter.
       *Verify:* `npm test`. *Files:* mod, smoke. *Size:* S
