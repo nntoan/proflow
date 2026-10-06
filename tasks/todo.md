@@ -45,7 +45,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 - [x] **T6 — the installer step.** Copy the script to `$HOME/.commandcode/scripts/`,
       best-effort fetch, `--no-holidays`/`PROFLOW_HOLIDAYS=off`, the pinned skip line, manifest record.
       *Accept:* rows 23/24 pass offline. *Verify:* `npm test`. *Files:* install.mjs, install test. *Size:* M
-- [ ] **T7 — `/proflow --refresh-holidays`.** Bounded 5 s spawn, three pinned lines, extended
+- [x] **T7 — `/proflow --refresh-holidays`.** Bounded 5 s spawn, three pinned lines, extended
       `argumentHint`, and the inert `deepseek-holidays` value surfaced once in the status message.
       *Accept:* row 21 passes. *Verify:* `npm test`. *Files:* mod, smoke. *Size:* M
 - [ ] **T8 — uninstall scope + docs.** Home removal only when the manifest's scope is `global`;

@@ -10,6 +10,7 @@
 //   3. `/proflow`, a status command.
 
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 
@@ -645,7 +646,7 @@ export default function (cmd: ModApi): void {
 	cmd.addFlag('deepseek-holidays', {
 		type: 'string',
 		default: '',
-		description: 'Extra peak dates (YYYY-MM-DD), comma-separated.',
+		description: 'Ignored — off-peak days come from ~/.commandcode/holidays-cn.json',
 	});
 
 	const rules = loadRules(cmd.cwd);
@@ -865,8 +866,18 @@ export default function (cmd: ModApi): void {
 	cmd.addCommand({
 		name: 'proflow',
 		description: 'Show the proflow guard, footer, and config status',
-		argumentHint: '[--refresh-rates]',
+		argumentHint: '[--refresh-rates|--refresh-holidays]',
 		handler: ({args}: {args?: string} = {}) => {
+			if (String(args ?? '').includes('--refresh-holidays')) {
+				const script = join(homedir(), '.commandcode', 'scripts', 'holidays.mjs');
+				const out = join(homedir(), '.commandcode', 'holidays-cn.json');
+				try {
+					return {message: execFileSync(process.execPath, [script, '--out', out], {encoding: 'utf8', timeout: 5000}).trimEnd()};
+				} catch (error) {
+					if (error?.killed || error?.signal === 'SIGTERM') return {message: 'holidays: timed out'};
+					return {message: `holidays: failed (${error?.status ?? error?.code ?? 'no script'})`};
+				}
+			}
 			if (String(args ?? '').includes('--refresh-rates')) {
 				const result = refreshRates();
 				return {
@@ -889,6 +900,13 @@ export default function (cmd: ModApi): void {
 					`  next-step    ${cmd.getFlag('next-step') === false ? 'off' : 'on'}${nextStep ? ` (next: ${nextStep})` : ''}`,
 					`  cost window  ${cmd.getFlag('deepseek-window')}`,
 					`  rates        ${existsSync(join(homedir(), '.commandcode', 'rates.json')) ? 'snapshot' : 'live registry'}`,
+					...(String(cmd.getFlag('deepseek-holidays') ?? '').trim()
+						? [
+								`  deepseek-holidays: ${String(cmd.getFlag('deepseek-holidays'))}`,
+								'    ignored — off-peak days come from ~/.commandcode/holidays-cn.json',
+								'    refresh with /proflow --refresh-holidays',
+							]
+						: []),
 					`  config       ${config || '(none — run the installer to create one)'}`,
 				].join('\n'),
 			};
