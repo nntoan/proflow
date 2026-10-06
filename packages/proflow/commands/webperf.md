@@ -29,4 +29,4 @@ The subagent returns a scorecard (only populated with sourced values), a ranked 
 
 ## Output
 
-Return the full audit report to the user. No synthesis or merge step is needed — this is a single-persona command.
+Return the full audit report to the user. Then ask **with the question tool** which findings to act on, and whether configuration or infrastructure may change. No synthesis or merge step is needed — this is a single-persona command.

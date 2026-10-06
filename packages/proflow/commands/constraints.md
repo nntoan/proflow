@@ -24,7 +24,7 @@ Default behaviour with no arguments: set up constraints for this repository.
 
 6. **Point the agent at it.** Add a line to CLAUDE.md telling agents to read CONSTRAINTS.md and never weaken it to make a change pass.
 
-7. **Verify.** Run the constraints against the current branch. If anything fails that the user disagrees with, fix the constraint now rather than leaving a gate people will learn to ignore.
+7. **Verify.** Run the constraints against the current branch. If anything fails, ask **with the question tool** whether to keep the constraint, relax it, or fix the branch — and never quietly weaken a gate to make a change pass rather than leaving a gate people will learn to ignore.
 
 Sub-commands:
 - `/constraints check` — run the current constraints against this branch and report

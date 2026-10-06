@@ -216,4 +216,24 @@ export default [
 	{file: 'commands/test.md', replaces: [
 			{find: '"Looks right" is not evidence.', with: '"Looks right" is not evidence.\n\nThen ask **with the question tool** what to do about anything still failing — fix it now, file it, or stop — rather than ending the turn on the report. A failure list is not a conclusion.'},
 	]},
+
+	// A report is not a conclusion: to-review.md asks what to do with what it produced.
+	{file: 'commands/to-review.md', replaces: [
+			{find: 'concrete fix recommendations.', with: 'concrete fix recommendations. Then ask **with the question tool** what to do about them — act on the critical findings, act on all of them, defer, or stop — because a ranked finding list is not a conclusion.'},
+	]},
+
+	// A report is not a conclusion: webperf.md asks what to do with what it produced.
+	{file: 'commands/webperf.md', replaces: [
+			{find: 'Return the full audit report to the user.', with: 'Return the full audit report to the user. Then ask **with the question tool** which findings to act on, and whether configuration or infrastructure may change.'},
+	]},
+
+	// A report is not a conclusion: code-simplify.md asks what to do with what it produced.
+	{file: 'commands/code-simplify.md', replaces: [
+			{find: 'Use `code-review-and-quality` to review the result.', with: 'Use `code-review-and-quality` to review the result. Then ask **with the question tool** whether to keep the pass as it stands, revert any part of it, or continue.'},
+	]},
+
+	// A report is not a conclusion: constraints.md asks what to do with what it produced.
+	{file: 'commands/constraints.md', replaces: [
+			{find: 'If anything fails that the user disagrees with, fix the constraint now', with: 'If anything fails, ask **with the question tool** whether to keep the constraint, relax it, or fix the branch — and never quietly weaken a gate to make a change pass'},
+	]},
 ];

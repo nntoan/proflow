@@ -14,4 +14,4 @@ Review the current changes (staged or recent commits) across all five axes:
 
 Categorize findings as Critical, Important, or Suggestion. Read the tests first — they reveal
 intent and coverage. Output a structured review with specific `file:line` references and
-concrete fix recommendations.
+concrete fix recommendations. Then ask **with the question tool** what to do about them — act on the critical findings, act on all of them, defer, or stop — because a ranked finding list is not a conclusion.

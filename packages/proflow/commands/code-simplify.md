@@ -19,4 +19,4 @@ Simplify recently changed code (or the specified scope) while preserving exact b
 5. Apply each simplification incrementally — run tests after each change
 6. Verify all tests pass, the build succeeds, and the diff is clean
 
-If tests fail after a simplification, revert that change and reconsider. Use `code-review-and-quality` to review the result.
+If tests fail after a simplification, revert that change and reconsider. Use `code-review-and-quality` to review the result. Then ask **with the question tool** whether to keep the pass as it stands, revert any part of it, or continue.
