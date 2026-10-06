@@ -38,7 +38,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 
 ## Phase 3 — Calendar supply (the CLI side)
 
-- [ ] **T5 — `holidays.mjs`.** Fetch, validate (≥ 5 dates per year, within the year), atomic
+- [x] **T5 — `holidays.mjs`.** Fetch, validate (≥ 5 dates per year, within the year), atomic
       write, `--out`, the pinned `<N> days for <Y1>, <Y2>` line. Parse a fixture first.
       *Accept:* a 4-date fixture is refused; the previous file byte-identical.
       *Verify:* the script with `--out /tmp/x.json`; `npm test`. *Files:* script, install test. *Size:* M

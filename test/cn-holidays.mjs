@@ -3,7 +3,7 @@
 // The home directory is a parameter, so every fixture lives in a temp dir and the real
 // ~/.commandcode is never touched. The cache is per process, so each case invalidates it.
 import assert from 'node:assert/strict';
-import {mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -31,6 +31,11 @@ const withCalendar = (raw, name = 'holidays-cn.json') => {
 };
 const NAT = JSON.stringify({2026: {off: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07']}});
 const NAT_4 = JSON.stringify({2026: {off: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']}});
+// T5 — the fetch script's testable half: validation, the atomic write, and the refusal.
+const SCRIPT = join(here, '..', 'packages', 'cli', 'scripts', 'holidays.mjs');
+const hol = await import(pathToFileURL(SCRIPT).href);
+const NAT_RAW = JSON.parse(NAT);
+
 const checks = [];
 const check = (name, fn) => {
 	mod.invalidateCalendar();
@@ -87,6 +92,43 @@ try {
 		mod.invalidateCalendar();
 		assert.equal(mod.loadCalendar(second).off.size, 4, 'after invalidation the new file is read');
 	});
+	check('T5: validation accepts a real calendar and refuses anything under the floor', () => {
+		assert.deepEqual(hol.validateHolidays(NAT_RAW), {2026: 7});
+		assert.equal(hol.validateHolidays({2026: {off: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']}}), null,
+			'four dates is under the floor, so the year is refused outright');
+		assert.equal(hol.validateHolidays({2026: {off: []}}), null);
+		assert.equal(hol.validateHolidays(null), null);
+		assert.equal(hol.validateHolidays([1, 2]), null);
+		assert.equal(hol.validateHolidays({2026: {off: 'not-an-array'}}), null);
+	});
+
+	check('T5: a date outside its year key is dropped, and never counts toward the floor', () => {
+		const fiveInYear = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05'];
+		assert.deepEqual(hol.validateHolidays({2026: {off: [...fiveInYear, '2027-01-01', 42, 'nope']}}), {2026: 5},
+			'the three junk rows are dropped and the five real ones pass the floor');
+		assert.equal(hol.validateHolidays({2026: {off: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2027-01-01']}}), null,
+			'with one of five being out-of-year, only four count — under the floor');
+	});
+
+	check('T5: applyHolidays writes atomically and reports the pinned line', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'proflow-hol-'));
+		const out = join(dir, 'nested', 'holidays-cn.json');
+		const line = hol.applyHolidays(out, NAT_RAW);
+		assert.equal(line, `holidays: wrote 7 days for 2026 → ${out}`);
+		assert.equal(JSON.parse(readFileSync(out, 'utf8'))['2026'].off.length, 7);
+		assert.ok(readFileSync(out, 'utf8').endsWith('\n'), 'the file ends with a newline');
+	});
+
+	check('T5: a refused calendar leaves the previous file byte-identical (spec row 21)', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'proflow-hol-'));
+		const out = join(dir, 'holidays-cn.json');
+		hol.applyHolidays(out, NAT_RAW);
+		const before = readFileSync(out, 'utf8');
+		assert.equal(hol.applyHolidays(out, {2026: {off: ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']}}), null, 'refused');
+		assert.equal(readFileSync(out, 'utf8'), before, 'untouched');
+		assert.equal(existsSync(`${out}.${process.pid}.tmp`), false, 'no temp file left behind');
+	});
+
 } catch (error) {
 	failed = true;
 	console.error(`  \u001b[31m✗\u001b[0m ${error.message}`);
