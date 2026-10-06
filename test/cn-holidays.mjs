@@ -129,6 +129,30 @@ try {
 		assert.equal(existsSync(`${out}.${process.pid}.tmp`), false, 'no temp file left behind');
 	});
 
+	check('T9: the verified notice expands to the year the spec assumes', () => {
+		const table = hol.expandRanges(hol.NOTICE.ranges);
+		assert.deepEqual(Object.keys(table), ['2026']);
+		const off = table['2026'].off;
+		assert.equal(off.length, 33, '3+9+3+5+3+3+7');
+		assert.equal(off[0], '2026-01-01');
+		assert.equal(off.at(-1), '2026-10-07');
+		for (const day of ['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-07']) {
+			assert.ok(off.includes(day), day + ' must be off-peak');
+		}
+		for (const day of ['2026-10-10', '2026-09-20', '2026-01-04', '2026-05-09']) {
+			assert.ok(!off.includes(day), day + ' is a make-up working day and must not be listed');
+		}
+		assert.equal(hol.NOTICE.id, 'Guo Ban Fa Ming Dian [2025] No. 7');
+		assert.match(hol.NOTICE.verified, /^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	check('T9: the notice prices the spec worked example as off-peak', () => {
+		const cal = mod.calendarFrom(hol.expandRanges(hol.NOTICE.ranges));
+		assert.equal(mod.isOffPeak(at('2026-10-05T02:00:00Z'), W, cal), true, 'a holiday weekday inside a peak window');
+		assert.equal(mod.nextChange(at('2026-10-05T02:00:00Z'), W, cal), 71 * H, 'the worked example');
+		assert.equal(mod.nextChange(at('2026-10-03T15:27:00Z'), W, cal), 105 * H + 33 * 60 * 1000, 'row 3');
+	});
+
 } catch (error) {
 	failed = true;
 	console.error(`  \u001b[31m✗\u001b[0m ${error.message}`);

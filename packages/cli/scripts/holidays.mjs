@@ -14,6 +14,48 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const SHAPE = '{"YYYY": {"off": ["YYYY-MM-DD", …]}}';
+
+/**
+ * The verified notice. Read on 2026-10-06 from a gov.cn-hosted copy of Guo Ban Fa Ming Dian
+ * [2025] No. 7 — every weekday label in it checks out against the real calendar, which is why the
+ * dates are trusted. The 调休 make-up days it names are deliberately absent: the weekend rule
+ * stands regardless, so they cannot cancel a weekend.
+ *
+ * Data rather than a live parse, because the notice is prose in Chinese and a mis-parse would
+ * silently become a wrong calendar. The annual chore is to read the new notice and update this.
+ */
+export const NOTICE = {
+	id: 'Guo Ban Fa Ming Dian [2025] No. 7',
+	publisher: 'General Office of the State Council',
+	url: 'https://en.bjhd.gov.cn/workinginhaidian/supportingservices/publicholidays/202512/t20251211_4797062.shtml',
+	verified: '2026-10-06',
+	ranges: {
+		2026: [
+			['2026-01-01', '2026-01-03'],
+			['2026-02-15', '2026-02-23'],
+			['2026-04-04', '2026-04-06'],
+			['2026-05-01', '2026-05-05'],
+			['2026-06-19', '2026-06-21'],
+			['2026-09-25', '2026-09-27'],
+			['2026-10-01', '2026-10-07'],
+		],
+	},
+};
+
+/** Inclusive ranges → the calendar shape the resolver reads. */
+export function expandRanges(ranges) {
+	const out = {};
+	for (const [year, spans] of Object.entries(ranges)) {
+		const off = [];
+		for (const [from, to] of spans) {
+			for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86400000) {
+				off.push(new Date(t).toISOString().slice(0, 10));
+			}
+		}
+		out[year] = {off};
+	}
+	return out;
+}
 export const MIN_DATES_PER_YEAR = 5;
 
 export function defaultOut(home = homedir()) {
@@ -65,7 +107,8 @@ function main(argv) {
 		console.log('holidays: skipped — --out needs a path');
 		process.exit(0);
 	}
-	console.log(`holidays: skipped — no source configured yet (spec Open Q1); shape is ${SHAPE}`);
+	const line = applyHolidays(out, expandRanges(NOTICE.ranges));
+	console.log(line ?? `holidays: skipped — the table failed validation (${SHAPE})`);
 	process.exit(0);
 }
 

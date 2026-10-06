@@ -33,14 +33,17 @@ try {
 		const script = join(home, '.commandcode', 'scripts', 'holidays.mjs');
 		assert.ok(existsSync(script), 'the script lands in the isolated HOME');
 		assert.match(res.stdout, /holidays: /, `the script's own line, not just the step label: ${res.stdout}`);
-		assert.equal(existsSync(join(home, '.commandcode', 'holidays-cn.json')), false, 'no calendar while the source is unwired');
+		const calendar = join(home, '.commandcode', 'holidays-cn.json');
+		assert.ok(existsSync(calendar), 'the installer writes the verified calendar');
+		assert.equal(JSON.parse(readFileSync(calendar, 'utf8'))['2026'].off.length, 33, '33 holiday days in 2026');
 	});
 
 	check('T6: the script runs when invoked — the realpath trap', () => {
 		const {home} = fixture();
 		const res = spawnSync(process.execPath, [join(here, '..', 'packages', 'cli', 'scripts', 'holidays.mjs'), '--out', join(home, 'x.json')], {encoding: 'utf8'});
 		assert.equal(res.status, 0, res.stderr);
-		assert.match(res.stdout, /holidays: skipped — no source configured/, 'a direct invocation must run main, not exit silently');
+		assert.match(res.stdout, /holidays: (wrote|skipped)/, 'a direct invocation must run main, not exit silently');
+		assert.match(res.stdout, /holidays: wrote 33 days for 2026/, 'and write from the verified notice');
 	});
 
 	check('T6: the flags still parse — the step did not break the chain', () => {

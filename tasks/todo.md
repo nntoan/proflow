@@ -59,7 +59,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
 
 ## Phase 4 — Close
 
-- [ ] **T9 — the citation and the parse source.** Answer Open Q1; record the endpoint with its
+- [x] **T9 — the citation and the parse source.** Answer Open Q1; record the endpoint with its
       verification date in `holidays.mjs`; record the policy citation in `docs/mod.md`.
       *Accept:* a live fetch into a temp `--out` succeeds. *Files:* script, docs. *Size:* S
 - [ ] **T10 — release.** Bump, notes, tag, push, verify on the remote.
