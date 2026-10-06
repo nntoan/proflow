@@ -697,6 +697,8 @@ export default function (cmd: ModApi): void {
 	// entries, so it survives a `/reload` *and* a `--resume` — the documented
 	// reload pattern for a mod with in-memory state.
 	const CACHE_ENTRY = 'proflow/cache';
+	// A separate entry, so the counters keep the shape they have always had.
+	const SESSION_ENTRY = 'proflow/session';
 	const seedSessionCounters = (): void => {
 		const entries = cmd.session?.getCustomEntries({customType: CACHE_ENTRY}) ?? [];
 		const last = entries.at(-1)?.data as {read?: number; total?: number} | undefined;
@@ -704,9 +706,18 @@ export default function (cmd: ModApi): void {
 			sessionRead = last.read;
 			sessionTotal = last.total;
 		}
+		const facts = cmd.session?.getCustomEntries({customType: SESSION_ENTRY})?.at(-1)?.data as
+			| {model?: string; context?: number}
+			| undefined;
+		if (typeof facts?.model === 'string') model = facts.model;
+		if (typeof facts?.context === 'number') contextTokens = facts.context;
 	};
 	const persistSessionCounters = (): void => {
 		cmd.session?.appendCustomEntry({customType: CACHE_ENTRY, data: {read: sessionRead, total: sessionTotal}});
+		// Session-stable facts, so the first paint after a reload shows them rather than a
+		// half-empty footer. The turn cost is not persisted: there has been no turn in
+		// this process, and a stale figure would be a lie.
+		cmd.session?.appendCustomEntry({customType: SESSION_ENTRY, data: {model, context: contextTokens}});
 	};
 
 	const refresh = (): void => {

@@ -58,15 +58,6 @@ const cmd = {
 		handlers.set(event, handler);
 		return {dispose() {}};
 	},
-	session: {
-		appendCustomEntry(entry) {
-			customEntries.push(entry);
-			return 'entry';
-		},
-		getCustomEntries() {
-			return seeded;
-		},
-	},
 	ui: {
 		setStatus(text) {
 			status = text;
@@ -89,6 +80,18 @@ const modUrl =
 const mod = await import(modUrl);
 assert.equal(typeof mod.default, 'function', 'mod must default-export a factory');
 mod.default(cmd);
+
+// The harness binds `cmd.session` only after the factory returns, so the mock does the same:
+// a mod that reads it at load sees nothing, exactly as on a real reload.
+cmd.session = {
+	appendCustomEntry(entry) {
+		customEntries.push(entry);
+		return 'entry';
+	},
+	getCustomEntries({customType} = {}) {
+		return [...seeded, ...customEntries].filter(entry => !customType || entry.customType === customType);
+	},
+};
 
 const hooksOf = () => hooks[0];
 const guard = command => hooksOf().beforeToolCall({toolCallId: 't', toolName: 'shell_command', input: {command}});
@@ -272,8 +275,8 @@ check('activating a lifecycle skill emits the next step as a coloured feed row',
 check('the session counters are persisted for the next reload or resume', () => {
 	customEntries.length = 0;
 	handlers.get('turn_end')();
-	const entry = customEntries.at(-1);
-	assert.equal(entry.customType, 'proflow/cache');
+	const entry = customEntries.findLast(entry => entry.customType === 'proflow/cache');
+	assert.ok(entry, 'the counters entry must be written');
 	assert.deepEqual(entry.data, {read: 745344, total: 745503}, 'the aggregate is stored, not a rolling EMA');
 });
 
@@ -287,6 +290,15 @@ check('a resumed session seeds the average from its own entries', async () => {
 		addFlag: () => ({dispose() {}}),
 		getFlag: name => flags.get(name),
 		hooks: () => ({dispose() {}}),
+		session: {
+			appendCustomEntry(entry) {
+				customEntries.push(entry);
+				return 'entry';
+			},
+			getCustomEntries({customType} = {}) {
+				return seeded.filter(entry => !customType || entry.customType === customType);
+			},
+		},
 		on: (event, handler) => {
 			handlers.set(`fresh:${event}`, handler);
 			return {dispose() {}};
