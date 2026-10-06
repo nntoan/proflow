@@ -42,7 +42,7 @@ Verification for every task: `npm test` (7 suites) — plus the focused command 
       write, `--out`, the pinned `<N> days for <Y1>, <Y2>` line. Parse a fixture first.
       *Accept:* a 4-date fixture is refused; the previous file byte-identical.
       *Verify:* the script with `--out /tmp/x.json`; `npm test`. *Files:* script, install test. *Size:* M
-- [ ] **T6 — the installer step.** Copy the script to `$HOME/.commandcode/scripts/`,
+- [x] **T6 — the installer step.** Copy the script to `$HOME/.commandcode/scripts/`,
       best-effort fetch, `--no-holidays`/`PROFLOW_HOLIDAYS=off`, the pinned skip line, manifest record.
       *Accept:* rows 23/24 pass offline. *Verify:* `npm test`. *Files:* install.mjs, install test. *Size:* M
 - [ ] **T7 — `/proflow --refresh-holidays`.** Bounded 5 s spawn, three pinned lines, extended

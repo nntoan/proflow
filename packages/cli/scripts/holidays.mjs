@@ -8,7 +8,7 @@
 //
 // Shape: {"YYYY": {"off": ["YYYY-MM-DD", …]}} — the off dates only. A 调休 make-up working day
 // is never represented: the weekend rule stands regardless, so the list carries no "work" side.
-import {mkdirSync, renameSync, writeFileSync} from 'node:fs';
+import {mkdirSync, realpathSync, renameSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -69,9 +69,12 @@ function main(argv) {
 	process.exit(0);
 }
 
+// Both sides resolved: on macOS a temp path reaches /var/... while import.meta.url resolves
+// to /private/var/..., and comparing them raw silently means "not invoked" — the script then
+// does nothing at all, which is exactly what the installer's empty capture looked like.
 function invokedDirectly() {
 	try {
-		return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+		return Boolean(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
 	} catch {
 		return false;
 	}
