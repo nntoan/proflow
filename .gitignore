@@ -8,6 +8,10 @@ node_modules/
 # reflection artifacts (IDEA.md, explore-brief.md, review-log.md, …) are working
 # notes — they stay with the session that produced them, not in git.
 docs/spec/*
+
+# The running plan and task list, local like docs/spec's siblings. The directory is part of
+# the harness's workflow — it stays on disk — but it is per-session state, never versioned.
+tasks/
 !docs/spec/*/
 docs/spec/*/*
 !docs/spec/*/SPEC.md
