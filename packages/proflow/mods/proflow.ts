@@ -669,6 +669,13 @@ export default function (cmd: ModApi): void {
 	let shownCost = 0;
 	let nextStep: string | null = null;
 	let active = false;
+	// Diagnostics for `/proflow --context`: the conversation prefix is captured in
+	// transformContext (read-only, always returned unchanged) so a reload can be told
+	// apart from a provider TTL expiry.
+	let prefixHash = '';
+	let prefixPrev = '';
+	let prefixRounds = 0;
+	const recentTurns: Array<[number, number, number]> = [];
 
 	// The footer is printed verbatim, so styling is ours. `colour: false` in the
 	// config (or --mod-option colour=false) strips every escape.
@@ -852,6 +859,8 @@ export default function (cmd: ModApi): void {
 			sessionTotal += total;
 			contextTokens = input;
 		}
+		recentTurns.push([input, read, written]);
+		if (recentTurns.length > 5) recentTurns.shift();
 		const cost = estimateCost(model, usage);
 		if (cost !== null) {
 			turnCost += cost;
@@ -909,6 +918,28 @@ export default function (cmd: ModApi): void {
 					'Ask the user to run it themselves if it is truly intended.',
 			};
 		},
+		// Capture the conversation prefix for `/proflow --context`. Read-only by contract:
+		// the array is returned unchanged (same reference), which is the documented "no
+		// change" signal — anything else would move a byte inside the cached prefix.
+		transformContext: ({messages}) => {
+			try {
+				const text = JSON.stringify(messages);
+				let hash = 2166136261;
+				for (let i = 0; i < text.length; i += 1) {
+					hash ^= text.charCodeAt(i);
+					hash = Math.imul(hash, 16777619);
+				}
+				const next = (hash >>> 0).toString(16).padStart(8, '0');
+				if (next !== prefixHash) {
+					if (prefixHash) prefixPrev = prefixHash;
+					prefixHash = next;
+				}
+				prefixRounds += 1;
+			} catch {
+				// diagnostics must never disturb a run
+			}
+			return messages;
+		},
 		// The force-continue half. Fires only when a run would end naturally, so it
 		// never fights a hard stop; `active` is the lifecycle signal the
 		// activate_skill handler above already sets, so an idle session is untouched.
@@ -932,6 +963,23 @@ export default function (cmd: ModApi): void {
 		description: 'Show the proflow guard, footer, and config status',
 		argumentHint: '[--refresh-rates|--refresh-holidays]',
 		handler: ({args}: {args?: string} = {}) => {
+			if (String(args ?? '').includes('--context')) {
+				const lines = recentTurns.map(([input, read, written], index) => {
+					const pct = input > 0 ? ((read / input) * 100).toFixed(1) : '0.0';
+					return `  t-${recentTurns.length - index}  input ${input}  cacheRead ${read} (${pct}%)  cacheWrite ${written}`;
+				});
+				const drift = prefixPrev && prefixPrev !== prefixHash ? ` (was ${prefixPrev})` : ' (steady)';
+				return {
+					message: [
+						'proflow context',
+						...lines,
+						`  prefix ${prefixHash || '(none yet)'}${drift}  rounds ${prefixRounds}`,
+						'',
+						'A prefix hash that changes inside one process means the conversation bytes did.',
+						'An unchanged prefix with a cold cache means the miss is the base prompt or the TTL.',
+					].join('\n'),
+				};
+			}
 			if (String(args ?? '').includes('--refresh-holidays')) {
 				const script = join(homedir(), '.commandcode', 'scripts', 'holidays.mjs');
 				const out = join(homedir(), '.commandcode', 'holidays-cn.json');
