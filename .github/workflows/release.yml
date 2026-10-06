@@ -29,11 +29,11 @@ jobs:
     outputs:
       publishable: ${{ steps.check.outputs.publishable }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the changelog needs the full history and the previous tag
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
 
@@ -66,9 +66,9 @@ jobs:
       contents: read
       id-token: write # OIDC — exchanged for a short-lived publish token
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           # Node 24 bundles npm 11. Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.
           node-version: '24'
