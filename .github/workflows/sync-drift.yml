@@ -15,6 +15,9 @@ permissions:
 jobs:
   drift:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
 
@@ -27,12 +30,32 @@ jobs:
           npm run sync
           npm run sync:magento2
 
-      - name: Fail if the vendored tree would change
+      - name: Open a re-vendor PR if the vendored tree would change
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if ! git diff --quiet; then
-            echo "::error::vendored upstream content changed — open a re-vendor PR (review the diff, run 'npm test', commit)"
-            git diff --stat
-            exit 1
+          if git diff --quiet; then
+            echo "vendored trees match upstream"
+            exit 0
+          fi
+
+          echo "::notice::vendored upstream content changed — opening a draft re-vendor PR"
+          git diff --stat > /tmp/revendor.stat
+          cat /tmp/revendor.stat
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B re-vendor/upstream
+          git add -A packages
+          git commit -q -m "chore(vendor): re-vendor upstream" -m "Opened by the scheduled drift job. Review the diff, fix any patch that no longer applies, run npm test, then merge." || true
+          git fetch origin re-vendor/upstream || true
+          git push --force-with-lease origin re-vendor/upstream
+
+          body=$(printf 'The drift job found vendored upstream content changed.\n\n```\n%s\n```\n\nReview the diff, fix any patch that no longer applies, run `npm test`, then merge.\n' "$(tail -40 /tmp/revendor.stat)")
+          if gh pr view re-vendor/upstream --json number -q .number >/dev/null 2>&1; then
+            gh pr edit re-vendor/upstream --body "$body"
+          else
+            gh pr create --draft --base main --head re-vendor/upstream --title "chore(vendor): re-vendor upstream" --body "$body"
           fi
 
       - name: Tests on the current tree
