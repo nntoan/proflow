@@ -206,7 +206,7 @@ Skill: `m2-deploy` — delegated. `m2-feature` **never** runs `bin/magento`
 itself; `m2-deploy` owns the deploy plan (it is the component that runs the `bin/magento`
 steps). If `m2-deploy` is genuinely absent, offer the enable / `setup:upgrade` /
 `setup:di:compile` / `cache:flush` commands as manual next steps for the user to run — do not
-auto-run them (SKILL.md Phase 5 §Deploy task).
+auto-run them (`references/phase5-task-types.md` §Deploy task).
 Model tier (advisory): haiku
 Estimate: S
 

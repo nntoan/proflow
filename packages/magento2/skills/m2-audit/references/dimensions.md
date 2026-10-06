@@ -1,15 +1,15 @@
 # Audit Dimensions
 
 The dimension catalogue `m2-audit` fans out. Each row: what runs it, when it is included,
-the `outputKind` it emits, and its advisory model tier (see `parallel-dispatch.md`).
+the `outputKind` it emits, and the model tier its dispatch pins (see `parallel-dispatch.md`).
 
 | Dimension | Runner | Included when | outputKind | Tier |
 |-----------|--------|---------------|-----------|------|
-| Architecture / API review | `m2-reviewer` agent (dimension: Architecture/API) | always | `m2-review` | session |
-| Security review | `m2-reviewer` agent (dimension: Security) | always | `m2-review` | session/opus |
+| Architecture / API review | `m2-reviewer` agent (dimension: Architecture/API) | always | `m2-review` | opus |
+| Security review | `m2-reviewer` agent (dimension: Security) | always | `m2-review` | opus |
 | Frontend/admin review | `m2-reviewer` agent (dimension: Frontend/admin) | a `view/`, `ui_component/`, or controller surface exists | `m2-review` | haiku |
 | Testing/tooling review | `m2-reviewer` agent (dimension: Testing/tooling) | always | `m2-review` | haiku |
-| Performance/ops review | `m2-reviewer` agent (dimension: Performance/operations) | always | `m2-review` | session |
+| Performance/ops review | `m2-reviewer` agent (dimension: Performance/operations) | always | `m2-review` | sonnet |
 | Security scan | `m2-security` `scripts/build-findings.sh` | always | `m2-security` | haiku (scripted) |
 | Performance scan | `m2-perf-audit` `scripts/build-findings.sh` | always | `performance` | haiku (scripted) |
 | Static analysis | `m2-lint` `scripts/build-findings.sh` | always | `quality` | haiku (scripted) |

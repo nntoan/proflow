@@ -1,6 +1,6 @@
 ---
 name: m2-perf-audit
-version: 1.2.0
+version: 1.3.0
 description: >-
     Performance audit of Magento 2 modules or the overall site. Use when the user reports slowness, wants a pre-launch performance check, suspects N+1 queries, or wants to review caching/indexer/queue behaviour. Produces severity-ranked findings in Markdown, JSON, and SARIF. Combines static analysis with optional runtime checks; never assumes a running Magento instance. Produces actionable, severity-ranked findings — vs the lighter read-only slow-query inspection in m2-debug.
 ---
@@ -174,7 +174,8 @@ pass this to collect a run's artifacts under one folder.
 
 ## Execution Mode
 
-Default: **inline**. In `agents` mode (`--agents` flag, or `execution_mode` in
+Default: **auto** — `agents` when the plugin's context-budget hook reports this conversation
+above its threshold, `inline` otherwise. In `agents` mode (`--agents` flag, or `execution_mode` in
 `.commandcode/m2.json` surfaced as `{ctx.execution_mode}` — selection contract in
 `context/references/execution-modes.md`) the judgement
 passes of this skill are dispatched to the read-only `m2-reviewer` agent with a performance/operations

@@ -1,11 +1,16 @@
 {
   "source": "https://github.com/addyosmani/agent-skills",
-  "repo": "/private/tmp/commandcode-501/-Users-nntoan-Workspace-data-agentic-proflow/4d15df2c-8697-49a3-84c1-bd23069f994c/scratchpad/agent-skills-upstream",
+  "repo": "https://github.com/addyosmani/agent-skills.git",
   "ref": "main",
-  "commit": "2686b620fc1fed2e8f60c704839c766b8594c6b6",
-  "version": "0.6.11",
+  "commit": "1401c8b8030e023baeebb31781a6653fe8e93026",
+  "version": "0.6.12",
   "patches": [
     "skills/spec-driven-development/SKILL.md",
+    "agents/code-reviewer.md",
+    "agents/security-auditor.md",
+    "agents/web-performance-auditor.md",
+    "agents/test-engineer.md",
+    "skills/planning-and-task-breakdown/SKILL.md",
     "commands/spec.md",
     "commands/to-plan.md",
     "commands/build.md",
@@ -13,11 +18,19 @@
     "commands/to-review.md",
     "commands/ship.md",
     "commands/constraints.md",
-    "commands/code-simplify.md"
+    "commands/code-simplify.md",
+    "commands/build.md",
+    "commands/build.md",
+    "commands/ship.md",
+    "commands/test.md",
+    "commands/to-review.md",
+    "commands/webperf.md",
+    "commands/code-simplify.md",
+    "commands/constraints.md"
   ],
   "commandRenames": {
     "plan": "to-plan",
     "review": "to-review"
   },
-  "syncedAt": "2026-10-01T11:42:54.469Z"
+  "syncedAt": "2026-10-06T09:16:59.246Z"
 }

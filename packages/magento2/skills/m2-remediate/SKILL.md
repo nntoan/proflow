@@ -2,7 +2,11 @@
 name: m2-remediate
 version: 1.0.0
 description: >-
-    Execute an approved remediation plan — the write half of the findings cycle. Consumes the plan m2-triage emits (or an audit document, which it triages inline first), works batch by batch in dependency order, and invokes the skill that owns each finding with that finding's fingerprint and evidence so the diagnosis is never re-derived. One approval per batch, one commit per finding carrying a Closes-Finding trailer, and a closure diff from m2-audit --compare at the end to prove what actually closed. Use when the user asks to fix, remediate, or work through the findings in a report. Never edits vendor/, and a gate: manual item (a leaked credential needs rotation, not a deleted line) is reported as a human action, never executed. For one user-reported bug use m2-fix; to build new behaviour use m2-feature; to find or re-check findings use m2-audit, which stays read-only.
+  Execute an approved remediation plan. Consumes the plan m2-triage emits (or an audit
+  report, triaged inline), works batch by batch via the skill owning each finding, one approval per
+  batch. Use to fix, remediate, or work through a report's findings. Never edits vendor/; manual
+  items are reported, not executed. For one user-reported bug use m2-fix; new behaviour
+  m2-feature; to find or re-check findings use m2-audit (read-only).
 ---
 
 # Magento 2 Findings Remediation
@@ -56,6 +60,7 @@ building new behaviour, this skill orchestrates closing known defects.
   `context/references/artifact-layout.md`) and threads the **same** value into every
   sub-skill invocation, so one run's artifacts stay in one root. Otherwise the run report lands
   under `{ctx.docs_root}/remediation/`.
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
 
 ## Workflow
 

@@ -1,8 +1,12 @@
 ---
 name: m2-review
-version: 2.4.1
+version: 2.5.0
 description: >-
-    Review Magento 2 modules for architecture, Magento framework requirements, best practices, security, code quality, maintainability, PHPDoc, SOLID/DRY/KISS/SRP, and test coverage. Use when asked to audit, review, validate, assess, or report on a Magento 2 module, including app/code modules, package-source modules, composer-distributed modules, controller/service/model/template/config/schema reviews, or release-readiness checks. The skill is environment-independent: it must not assume Docker, Make, bin/magento, installed dependencies, a database, network access, or a running Magento instance, and should use available static-analysis tools opportunistically. For security-only depth (CVEs, secrets, Marketplace EQP) use m2-security; for performance-only depth use m2-perf-audit.
+  Review a Magento 2 module or diff for architecture, framework requirements, security, code quality,
+  maintainability, PHPDoc, and test coverage. Use when asked to review, validate, or assess a
+  module or diff. Environment-independent: needs no Docker, bin/magento, or database. For a full
+  multi-dimension release audit use m2-audit; for security-only depth (CVEs, secrets,
+  EQP) m2-security; for performance-only depth m2-perf-audit.
 ---
 
 # Magento 2 Module Review
@@ -24,6 +28,7 @@ missing tool or unavailable Magento runtime is an environment limitation, not a 
 - Separate confirmed defects, recommendations, subjective style notes, and environment limitations.
 - Evaluate code style, PHPDoc, DRY, SOLID, KISS, and SRP as maintainability criteria; only escalate when they create
   concrete risk or violate Magento standards.
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
 
 ## Workflow
 
@@ -175,7 +180,8 @@ Note explicitly which Tier 2 and 3 areas were skipped. If any Critical or High f
 
 ## Execution Mode
 
-Default: **inline**. `--agents` (or `execution_mode` in `.commandcode/m2.json`, surfaced as
+Default: **auto** — `agents` when the plugin's context-budget hook reports this conversation
+above its threshold, `inline` otherwise. `--agents` (or `execution_mode` in `.commandcode/m2.json`, surfaced as
 `{ctx.execution_mode}`) dispatches one
 read-only `m2-reviewer` subagent per review dimension and this skill owns synthesis — the
 selection contract, precedence, and invariants are in

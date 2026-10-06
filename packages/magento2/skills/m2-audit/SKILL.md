@@ -1,18 +1,13 @@
 ---
 name: m2-audit
-version: 1.1.0
+version: 1.1.1
 description: >-
-  Use when the user wants a full pre-release, release-readiness, or "audit everything" pass over a
-  Magento 2 module or codebase — one command that runs every read-only findings dimension and
-  returns a SINGLE consolidated, de-duplicated, severity-ranked report plus one merged SARIF for CI
-  / GitHub Code Scanning. Fans the dimensions out in parallel: architecture/quality/security review
-  via the `m2-reviewer` agent per dimension, plus the specialist audits
-  `m2-security`, `m2-perf-audit`, `m2-lint`,
-  `m2-a11y-audit`, `m2-marketplace`, and `m2-breeze-compat`
-  where the module's surface warrants — then consolidates. Read-only; never modifies code. For a
-  SINGLE dimension, invoke that skill directly (`m2-review`, `m2-security`,
-  `m2-perf-audit`); to BUILD or change functionality rather than inspect it, use
-  `m2-feature`.
+  Use for a full pre-release / release-readiness or "audit everything" pass over a module: fans out
+  read-only findings dimensions as the module's surface warrants into ONE ranked report plus merged
+  SARIF. Covers m2-review, m2-security, m2-perf-audit,
+  m2-lint, m2-a11y-audit, m2-marketplace,
+  m2-breeze-compat. Read-only. For ONE dimension use that skill; to BUILD or change
+  functionality use m2-feature.
 ---
 
 # Magento 2 Audit
@@ -45,6 +40,7 @@ counterpart to `m2-feature` (which *builds*).
   storefront templates exist; breeze-compat only under a Breeze theme; marketplace only when
   release-readiness is asked for). Record skipped dimensions in the report — never let an unrun
   dimension read as "clean."
+- **Output budget.** Follow `context/references/output-budget.md` — targeted reads, summary-first test/lint output, long logs to files.
 
 ## Workflow
 
@@ -80,7 +76,7 @@ Dispatch the selected dimensions concurrently. Two mechanisms (see
 
 - **Judgement dimensions** → dispatch `m2-reviewer` subagents, one per review dimension
   (Architecture/API · Security · Frontend/admin · Testing/tooling · Performance/operations), per
-  `m2-review`'s `references/parallel-review.md`. Read-only agents; tier per
+  `m2-review`'s `references/parallel-review.md`. Read-only agents; pass each one's `model` tier per
   `references/parallel-dispatch.md`.
 - **Scripted dimensions** → run each specialist skill's `scripts/build-findings.sh`
   (security / perf-audit / lint / a11y-audit / marketplace / breeze-compat) with
@@ -183,7 +179,7 @@ Per-dimension artifacts remain under their own category dirs (`reviews/`, `audit
 ## Reference Files
 
 - `references/dimensions.md` — dimension catalogue: which skill/agent runs each, when it is included,
-  its output kind, and its advisory model tier.
+  its output kind, and its model tier.
 - `references/parallel-dispatch.md` — how to fan out subagents (authorization, model tiers,
   sequential fallback).
 - `references/consolidation.md` — the dedup key, severity-normalization, and verdict/score rules.
