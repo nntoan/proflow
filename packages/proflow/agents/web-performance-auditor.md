@@ -1,6 +1,6 @@
 ---
 name: web-performance-auditor
-tools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status
+tools: "*"
 description: Web performance engineer focused on Core Web Vitals, loading, rendering, and network optimization. Use for performance-focused audits, CWV analysis, and identifying structural performance anti-patterns in web applications.
 ---
 

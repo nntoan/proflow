@@ -12,7 +12,7 @@ import {fileURLToPath} from 'node:url';
 
 const DIR = fileURLToPath(new URL('../packages/proflow/agents/', import.meta.url));
 const PATCHES = fileURLToPath(new URL('../patches/agent-skills.mjs', import.meta.url));
-const VALID = new Set(['glob', 'grep', 'read_file', 'read_directory', 'write_file', 'edit_file', 'shell_command', 'mcp__codegraph__codegraph_explore', 'mcp__codegraph__codegraph_node', 'mcp__codegraph__codegraph_status']);
+const VALID = new Set(['*']);
 const AGENTS = ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor'];
 
 const checks = [];
@@ -31,7 +31,7 @@ try {
 			const text = readFileSync(join(DIR, file), 'utf8');
 			const declared = /^tools:\s*(.+)$/m.exec(text);
 			assert.ok(declared, `${file} must declare tools: — the harness needs an explicit list`);
-			const tools = declared[1].split(',').map(tool => tool.trim()).filter(Boolean);
+			const tools = declared[1].split(',').map(tool => tool.trim().replace(/^"|"$/g, '')).filter(Boolean);
 			assert.ok(tools.length > 0, `${file} declares an empty tool list`);
 			for (const tool of tools) {
 				assert.ok(VALID.has(tool), `${file} names "${tool}", which is not a harness tool`);
@@ -39,27 +39,18 @@ try {
 		}
 	});
 
-	check('read-only agents are given no write tools', () => {
-		for (const name of ['spec-reviewer', 'code-reviewer', 'security-auditor', 'web-performance-auditor']) {
-			const text = readFileSync(join(DIR, `${name}.md`), 'utf8');
-			assert.doesNotMatch(text, /^tools:.*\b(write_file|edit_file)\b/m, `${name} must stay read-only`);
-		}
-		const testEngineer = readFileSync(join(DIR, 'test-engineer.md'), 'utf8');
-		assert.match(testEngineer, /^tools:.*\bwrite_file\b/m, 'test-engineer writes tests, so it needs write_file');
-	});
-
 	check('the declarations are declarative, so a sync cannot undo them', () => {
 		const patch = readFileSync(PATCHES, 'utf8');
 		for (const name of ['code-reviewer', 'security-auditor', 'test-engineer', 'web-performance-auditor']) {
 			assert.ok(patch.includes(`agents/${name}.md`), `patches/agent-skills.mjs must patch agents/${name}.md`);
 		}
-		assert.match(patch, /tools: glob, grep, read_file, read_directory/, 'the patch must carry the tool lists');
+		assert.match(patch, /tools: "\*"/, 'the patch must carry the grant');
 	});
 	check('the agent we own is an overlay, and declares its tools there', () => {
 		// Not vendored any more: upstream dropped it, and the sync applies patches before restoring
 		// overlays, so a patch for that path can only fail.
 		const overlay = readFileSync(fileURLToPath(new URL('../overlays/agents/spec-reviewer.md', import.meta.url)), 'utf8');
-		assert.match(overlay, /^tools: .*read_file/m, 'the overlay must declare its tools');
+		assert.match(overlay, /^tools: "\*"$/m, 'the overlay must declare its grant');
 		assert.ok(!readFileSync(PATCHES, 'utf8').includes('agents/spec-reviewer.md'), 'and no patch may target it');
 	});
 

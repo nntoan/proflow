@@ -1,7 +1,7 @@
 ---
 name: spec-reviewer
 description: Adversarial reviewer of a draft specification before implementation. Use inside the /spec reflection loop to find substantive defects (missing scenarios, contradictions, untestable acceptance criteria) in docs/spec/<id>/SPEC.md and report them to the main session.
-tools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status
+tools: "*"
 ---
 
 # Spec Reviewer

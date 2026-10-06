@@ -58,7 +58,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: code-reviewer\n',
-				with: 'name: code-reviewer\ntools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status',
+				with: 'name: code-reviewer\ntools: "*"',
 			},
 		],
 	},
@@ -68,7 +68,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: security-auditor\n',
-				with: 'name: security-auditor\ntools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status',
+				with: 'name: security-auditor\ntools: "*"',
 			},
 		],
 	},
@@ -78,7 +78,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: web-performance-auditor\n',
-				with: 'name: web-performance-auditor\ntools: glob, grep, read_file, read_directory, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status',
+				with: 'name: web-performance-auditor\ntools: "*"',
 			},
 		],
 	},
@@ -88,7 +88,7 @@ export default [
 		replaces: [
 			{
 				find: 'name: test-engineer\n',
-				with: 'name: test-engineer\ntools: glob, grep, read_file, read_directory, write_file, edit_file, shell_command, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status',
+				with: 'name: test-engineer\ntools: "*"',
 			},
 		],
 	},
