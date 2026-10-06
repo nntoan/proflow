@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
 tools: "*"
+disallowedTools: write_file, edit_file, run_command
 description: Senior code reviewer that evaluates changes across five dimensions — correctness, readability, architecture, security, and performance. Use for thorough code review before merge.
 ---
 

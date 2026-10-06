@@ -54,6 +54,15 @@ try {
 		assert.ok(!readFileSync(PATCHES, 'utf8').includes('agents/spec-reviewer.md'), 'and no patch may target it');
 	});
 
+	check('the reporting personas deny the writing verbs, the writer does not', () => {
+		for (const name of ['code-reviewer', 'security-auditor', 'web-performance-auditor', 'spec-reviewer']) {
+			assert.match(readFileSync(join(DIR, `${name}.md`), 'utf8'),
+				/^disallowedTools: write_file, edit_file, run_command$/m, `${name} must deny the writing verbs`);
+		}
+		assert.doesNotMatch(readFileSync(join(DIR, 'test-engineer.md'), 'utf8'), /disallowedTools/,
+			'test-engineer writes tests, so it denies nothing');
+	});
+
 } catch (error) {
 	failed = true;
 	console.error(`  \u001b[31m✗\u001b[0m ${error.message}`);
