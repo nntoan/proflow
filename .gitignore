@@ -15,3 +15,6 @@ tasks/
 !docs/spec/*/
 docs/spec/*/*
 !docs/spec/*/SPEC.md
+
+# Research notes: read locally, never versioned.
+docs/research/
