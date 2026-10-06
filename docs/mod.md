@@ -101,3 +101,17 @@ rendering it falls back to a notice (`cmd.ui.capabilities.status`).
 
 Prints the guard tier counts, the footer state, the configured cost window, and which config files
 were found.
+
+## The off-peak calendar
+
+The cost window prices Chinese public holidays and weekends as off-peak, all day, on the China
+calendar day — `[D−1 16:00Z, D 16:00Z)`. The dates live in one machine-local file,
+`~/.commandcode/holidays-cn.json`, which the installer writes and `/proflow --refresh-holidays`
+rewrites; the mod reads it and never opens a socket.
+
+Shape: `{"YYYY": {"off": ["YYYY-MM-DD", …]}}` — the off dates only. A 调休 make-up working day is
+never listed, and cannot cancel a weekend: the weekend rule stands regardless.
+
+`deepseek-holidays` is **ignored**. It was registered but never read, and "extra peak dates" is
+the opposite concept; the flag remains so a config that sets it is not a hard failure, and the
+`/proflow` status says so when a value is present.

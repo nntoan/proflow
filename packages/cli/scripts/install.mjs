@@ -513,6 +513,23 @@ function uninstall(opts) {
 	const ccDir = scopeDir(opts);
 	const manifest = readManifest(ccDir);
 	if (!manifest) return warn(`proflow is not installed in ${ccDir}`);
+	// The calendar and its script are machine-local: every scope reads the same file, so only a
+	// global uninstall touches them. A project uninstall leaving them is the point — otherwise
+	// removing one project would silently degrade every other one to window ∪ weekend.
+	if (manifest.scope === 'global') {
+		for (const name of [...(manifest.scripts ?? []), 'holidays.mjs']) {
+			try {
+				if (!opts.dryRun) rmSync(join(scopeDir(opts), 'scripts', name), {force: true});
+			} catch {
+				// already gone
+			}
+		}
+		try {
+			if (!opts.dryRun) rmSync(join(scopeDir(opts), 'holidays-cn.json'), {force: true});
+		} catch {
+			// nothing to remove
+		}
+	}
 	const remove = path => {
 		if (opts.dryRun) return info(`  remove ${path}`);
 		rmSync(path, {recursive: true, force: true});

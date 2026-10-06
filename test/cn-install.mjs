@@ -79,6 +79,27 @@ try {
 		const manifest = JSON.parse(readFileSync(join(proj, '.commandcode', 'proflow.manifest.json'), 'utf8'));
 		assert.deepEqual(manifest.scripts, ['holidays.mjs']);
 	});
+	check('T8: a project uninstall leaves the machine-local calendar alone (spec row 25)', () => {
+		const {home, proj} = fixture();
+		assert.equal(run(home, proj, 'install', '--yes').status, 0);
+		const script = join(home, '.commandcode', 'scripts', 'holidays.mjs');
+		assert.ok(existsSync(script), 'deployed by the install');
+		assert.equal(run(home, proj, 'uninstall').status, 0);
+		assert.ok(existsSync(script), 'a project uninstall must not remove it — other scopes read it');
+	});
+
+	check('T8: a global uninstall removes the script it deployed', () => {
+		const home = mkdtempSync(join(tmpdir(), 'proflow-home-'));
+		const globalRun = (...args) =>
+			spawnSync(process.execPath, [INSTALLER, ...args, '--global'], {encoding: 'utf8', env: {...process.env, HOME: home}});
+		assert.equal(globalRun('install', '--yes').status, 0, 'a real global install, so the manifest exists');
+		const script = join(home, '.commandcode', 'scripts', 'holidays.mjs');
+		assert.ok(existsSync(script), 'deployed globally');
+		assert.equal(globalRun('uninstall').status, 0);
+		assert.equal(existsSync(script), false, 'the script goes with a global uninstall');
+		assert.equal(existsSync(join(home, '.commandcode', 'holidays-cn.json')), false);
+	});
+
 } catch (error) {
 	failed = true;
 	console.error(`  \u001b[31m✗\u001b[0m ${error.message}`);

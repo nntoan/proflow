@@ -107,3 +107,14 @@ removed from that scope; the core payload is always refreshed, and your
 `proflow.jsonc` is never touched. Flags win over the detected state: `--mod gh`
 keeps only gh, `--no-magento2` clears the pack, and `--yes` with no flags keeps
 everything as it is.
+
+## The holiday calendar
+
+The installer deploys `holidays.mjs` into `~/.commandcode/scripts/` and runs it once to write
+`~/.commandcode/holidays-cn.json`. Best-effort: a failure prints a note and the install still
+succeeds, in which case the footer degrades to peak windows plus weekends.
+
+- `--no-holidays`, or `PROFLOW_HOLIDAYS=off`, skips the step entirely.
+- `/proflow --refresh-holidays` rewrites the file on demand, bounded by a 5 s timeout.
+- A **global** uninstall removes the calendar and the script; a project uninstall leaves them,
+  because every scope reads the same machine-local file.
