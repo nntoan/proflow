@@ -806,6 +806,15 @@ export default function (cmd: ModApi): void {
 		ensureSeeded();
 	});
 
+	// The footer is a segment this process owns, so a `/reload` clears it and nothing
+	// repaints until the first model request. `session_start` fires when the harness binds
+	// the host — the first moment the session is readable — so seed and paint there and
+	// the footer returns immediately, with the resumed counters already in it.
+	cmd.on('session_start', () => {
+		ensureSeeded();
+		refresh();
+	});
+
 	// Once per turn: keep the cost window visible in the feed (a feed row cannot
 	// persist the way a footer segment does), and persist the session counters so
 	// the average survives the next reload or resume.
