@@ -870,6 +870,10 @@ export default function (cmd: ModApi): void {
 			sessionTotal += total;
 			contextTokens = input;
 		}
+		// Durable as soon as they are known, not only at turn end: the first turn on a new
+		// build is then already restorable by the next reload, instead of needing one full
+		// turn under the new build first.
+		cmd.session?.appendCustomEntry({customType: SESSION_ENTRY, data: {model, context: contextTokens}});
 		recentTurns.push([input, read, written]);
 		if (recentTurns.length > 5) recentTurns.shift();
 		const cost = estimateCost(model, usage);
@@ -983,9 +987,13 @@ export default function (cmd: ModApi): void {
 				return {
 					message: [
 						'proflow context',
+						`  session  model ${model ?? '-'}  ctx ${contextTokens === null ? '-' : count(contextTokens)}  avg ${
+							sessionTotal > 0 ? ((sessionRead / sessionTotal) * 100).toFixed(2) : '-'
+						}%`,
+						`  process  rounds ${prefixRounds}  prefix ${prefixHash || '(none yet)'}${drift}`,
 						...lines,
-						`  prefix ${prefixHash || '(none yet)'}${drift}  rounds ${prefixRounds}`,
 						'',
+						'Rounds are this process only, so a fresh reload reports 0 until the next turn.',
 						'A prefix hash that changes inside one process means the conversation bytes did.',
 						'An unchanged prefix with a cold cache means the miss is the base prompt or the TTL.',
 					].join('\n'),
