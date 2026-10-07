@@ -61,6 +61,22 @@ check('a gated stop names the tool the gate tells the model to use', async () =>
 	assert.ok(gate[1].includes(TOOL_ID), `the gate must look for ${TOOL_ID}`);
 });
 
+check('every gated stop in our command patches names the question tool', async () => {
+	// Checked against the patch layer rather than the built files: those files also carry upstream
+	// prose we do not own, and a lint that fails on someone else's wording is a lint nobody keeps.
+	const patches = (await import(join(ROOT, 'patches', 'commands.mjs'))).default;
+	const STOP = /ask which|stop and ask|confirm with the user|wait for explicit|ask the user/i;
+	let checked = 0;
+	for (const entry of patches) {
+		for (const rule of entry.replaces ?? []) {
+			if (!STOP.test(rule.with ?? '')) continue;
+			checked += 1;
+			assert.match(rule.with, /question tool/i, `${entry.file}: a decision stop must name the question tool`);
+		}
+	}
+	assert.ok(checked >= 3, `expected the known gated stops, found ${checked}`);
+});
+
 let failed = 0;
 for (const [name, fn] of suite) {
 	try {

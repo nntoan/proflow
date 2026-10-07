@@ -116,7 +116,7 @@ skill treats the request as a new feature.
 Pick the mode, resolve `{Vendor}` (prefer `{ctx.vendor}`; never hardcoded), ask clarifying questions in one batch, state your understanding.
 **Read `references/phase1-4-design.md` before starting this phase.**
 
-**Multi-spec requests.** If the request names more than one spec or feature, run the first only (say which; list the rest). After Phase 7B, `AskUserQuestion`: "N specs remain: `<list>`. Continue here, or `/clear` and start the next fresh? (each feature adds ~150–300k tokens of context)" Options: **`/clear` and start fresh (Recommended)** — print `/m2-feature <remaining specs>` to run after `/clear`; **Continue here** — proceed to the next spec in place. Never hard-stop; no queue file.
+**Multi-spec requests.** If the request names more than one spec or feature, run the first only (say which; list the rest). After Phase 7B, `ask_user_question`: "N specs remain: `<list>`. Continue here, or `/clear` and start the next fresh? (each feature adds ~150–300k tokens of context)" Options: **`/clear` and start fresh (Recommended)** — print `/m2-feature <remaining specs>` to run after `/clear`; **Continue here** — proceed to the next spec in place. Never hard-stop; no queue file.
 
 ---
 

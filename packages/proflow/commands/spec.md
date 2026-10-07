@@ -15,4 +15,4 @@ Then generate a structured spec covering all six core areas: objective, commands
 If the request bundles several independently testable capabilities, first propose a capability map (module ids, dependency direction, build order) per the skill's Phase 0 and get it approved, then spec each module in dependency order.
 
 Save the spec to `docs/spec/<id>/SPEC.md` (never a repository-root `SPEC.md`) and confirm
-with the user before proceeding.
+with the user — with the question tool, not in prose — before proceeding.

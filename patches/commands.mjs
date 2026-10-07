@@ -34,7 +34,7 @@ export default [
 				find: 'Save the spec as SPEC.md in the project root and confirm with the user before proceeding.',
 				with:
 					'Save the spec to `docs/spec/<id>/SPEC.md` (never a repository-root `SPEC.md`) and confirm\n' +
-					'with the user before proceeding.',
+					'with the user — with the question tool, not in prose — before proceeding.',
 			},
 		],
 	},
@@ -50,7 +50,7 @@ export default [
 				with:
 					'Read the existing spec — prefer `docs/spec/<id>/SPEC.md`, with its `explore-brief.md` and\n' +
 					'`review-log.md` siblings — and the relevant codebase sections. A repository-root `SPEC.md` is\n' +
-					'not canonical; if several `docs/spec/<id>/` directories exist, ask which one this plan is for.\n' +
+					'not canonical; if several `docs/spec/<id>/` directories exist, ask which one this plan is for — with the question tool, not in prose.\n' +
 					'Then:',
 			},
 		],
@@ -65,7 +65,7 @@ export default [
 			{
 				find: '1. **Require a spec.** Look only for a spec at a known path: `SPEC.md` at the repo root, `docs/SPEC.md`, or a file under `spec/`. A README or arbitrary doc does **not** count.',
 				with:
-					'1. **Require a spec.** Prefer the canonical location `docs/spec/<id>/SPEC.md`; fall back to `docs/SPEC.md` or a file under `spec/`. A repository-root `SPEC.md`, a README, or an arbitrary doc does **not** count. If more than one `docs/spec/<id>/SPEC.md` exists, ask which one this build is for.',
+					'1. **Require a spec.** Prefer the canonical location `docs/spec/<id>/SPEC.md`; fall back to `docs/SPEC.md` or a file under `spec/`. A repository-root `SPEC.md`, a README, or an arbitrary doc does **not** count. If more than one `docs/spec/<id>/SPEC.md` exists, ask which one this build is for — with the question tool, not in prose.',
 			},
 			{
 				find: '(`SPEC.md`, `docs/SPEC.md`, `spec/*`, `tasks/plan.md`, `tasks/todo.md`)',

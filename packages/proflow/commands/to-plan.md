@@ -6,7 +6,7 @@ Invoke the planning-and-task-breakdown skill.
 
 Read the existing spec — prefer `docs/spec/<id>/SPEC.md`, with its `explore-brief.md` and
 `review-log.md` siblings — and the relevant codebase sections. A repository-root `SPEC.md` is
-not canonical; if several `docs/spec/<id>/` directories exist, ask which one this plan is for.
+not canonical; if several `docs/spec/<id>/` directories exist, ask which one this plan is for — with the question tool, not in prose.
 Then:
 
 1. Enter plan mode — read only, no code changes
