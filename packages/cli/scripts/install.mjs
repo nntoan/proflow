@@ -349,6 +349,30 @@ export function applyPlan(plan, opts, {onStep} = {}) {
 	};
 	const result = {skills: [], agents: [], commands: [], references: [], docs: [], mods: [], magento2: null, config: null, skipped: [], scripts: []};
 
+	// Phase 1: a record exists before any content does, so an interrupted install leaves something
+	// that says so rather than content nothing describes. The lists are the *intended* names — the
+	// source after the same filters placeStep applies — and `pending` is why the uninstall may not
+	// trust them: a foreign collision that placeStep would have skipped must not be removed on the
+	// strength of an intent. The overwrite at the end replaces this with what was actually placed.
+	if (!opts.dryRun) {
+		const intended = {skills: [], agents: [], commands: [], references: [], docs: [], mods: []};
+		for (const step of plan.steps) {
+			if (!existsSync(step.src)) continue;
+			const names = readdirSync(step.src)
+				.sort()
+				.filter(name => (!step.ext || name.endsWith(step.ext)) && (step.kind !== 'dirs' || existsSync(join(step.src, name, 'SKILL.md'))));
+			// docs and mods keep their extension in the manifest — the uninstall deletes exact files.
+			if (step.key === 'docs') intended.docs = names;
+			else if (step.key === 'mod') intended.mods = names;
+			else if (intended[step.key]) intended[step.key] = names.map(name => name.replace(/\.md$/, ''));
+		}
+		mkdirSync(plan.ccDir, {recursive: true});
+		writeFileSync(
+			join(plan.ccDir, MANIFEST),
+			`${JSON.stringify({name: 'proflow', version: VERSION, scope: opts.scope, pending: true, intended}, null, 2)}\n`,
+		);
+	}
+
 	for (const step of plan.steps) {
 		onStep?.(step.title);
 		const ownedSet = owned[step.key] ?? new Set();
@@ -511,8 +535,31 @@ function uninstall(opts) {
 	}
 
 	const ccDir = scopeDir(opts);
-	const manifest = readManifest(ccDir);
-	if (!manifest) return warn(`proflow is not installed in ${ccDir}`);
+	let manifest = readManifest(ccDir);
+	// With no manifest — or one recording an install that never finished — ownership falls back to the
+	// names the payload carries: what proflow would have placed in this scope. Without that fallback an
+	// interrupted install is unreachable from the wizard, and no user should have to know a flag to
+	// uninstall what the tool itself just detected. Removals are printed below, so a collision with
+	// someone else's file shows up rather than being silent.
+	if (!manifest || manifest.pending) {
+		const content = findPackage('proflow', 'commands');
+		if (!content) return warn(`proflow is not installed in ${ccDir}`);
+		const names = dir => {
+			const src = join(content, dir);
+			return existsSync(src)
+				? readdirSync(src).filter(n => n.endsWith('.md') || n.endsWith('.ts') || existsSync(join(src, n, 'SKILL.md')))
+				: [];
+		};
+		const bare = dir => names(dir).map(n => n.replace(/\.md$/, ''));
+		manifest = {
+			commands: bare('commands'),
+			references: bare('references'),
+			skills: names('skills'),
+			agents: bare('agents'),
+			docs: names('docs'),
+			mods: names('mods'),
+		};
+	}
 	// The calendar and its script are machine-local: every scope reads the same file, so only a
 	// global uninstall touches them. A project uninstall leaving them is the point — otherwise
 	// removing one project would silently degrade every other one to window ∪ weekend.
@@ -640,7 +687,13 @@ async function wizard(opts) {
 	if (observed.core) {
 		const action = guard(
 			await p.select({
-				message: `proflow is already installed in ${scopeLabel(opts, ccDir)}.`,
+				// `prev` is the only evidence the uninstall accepts, so it is the only evidence this
+				// menu may offer on: content with no manifest is an install that did not finish, and
+				// offering a removal there produces a menu that refuses its own choice.
+				message: prev
+					? `proflow is already installed in ${scopeLabel(opts, ccDir)}.`
+					: `proflow content is present in ${scopeLabel(opts, ccDir)}, but no manifest records it — ` +
+						'an install that did not finish. Re-installing adopts it.',
 		initialValue: 'reconfigure',
 				options: [
 					{value: 'reconfigure', label: 'Reconfigure', hint: 'add or remove packs, change what is installed'},

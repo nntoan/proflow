@@ -172,6 +172,25 @@ check('uninstall removes what proflow wrote and leaves foreign files', () => {
 	assert.match(ok(run('status')), /not installed/i);
 });
 
+check('uninstall works on an install that left no manifest, and spares foreign files', () => {
+	// An interrupted install leaves proflow content with nothing recording it. Uninstall must still
+	// work — it falls back to the names the payload carries — and must not take a file that merely
+	// shares a directory with them.
+	const mine = join(cc, 'skills', 'foreign-skill');
+	mkdirSync(mine, {recursive: true});
+	writeFileSync(join(mine, 'SKILL.md'), 'keep me');
+
+	ok(run('install', '--yes'));
+	assert.ok(existsSync(manifestPath), 'a finished install records itself');
+	rmSync(manifestPath, {force: true});
+
+	ok(run('uninstall'));
+	assert.ok(!existsSync(join(cc, 'commands', 'spec.md')), 'content with no manifest must still uninstall');
+	assert.ok(!existsSync(join(cc, 'skills', 'idea-refine')));
+	assert.ok(!existsSync(join(cc, 'mods', 'proflow.ts')));
+	assert.ok(existsSync(join(mine, 'SKILL.md')), 'a foreign skill must survive');
+});
+
 check('--magento2 installs the m2 pack and wires the guard hook', () => {
 	ok(run('install', '--yes', '--magento2'));
 	const skills = readdirSync(join(cc, 'skills'));
