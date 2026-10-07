@@ -706,18 +706,27 @@ export default function (cmd: ModApi): void {
 			sessionRead = last.read;
 			sessionTotal = last.total;
 		}
+		// Whatever the session recorded that is still true: a reload does not change the model,
+		// the effort, the context, or the cache share — measured at 99.3% across a process
+		// boundary — so restoring them is honest, where blanking them reads as a lost cache.
+		// The turn's cost is deliberately not here: it is a spend this process never made.
 		const facts = cmd.session?.getCustomEntries({customType: SESSION_ENTRY})?.at(-1)?.data as
-			| {model?: string; context?: number}
+			| {model?: string; effort?: string; context?: number; cache?: number}
 			| undefined;
 		if (typeof facts?.model === 'string') model = facts.model;
+		if (typeof facts?.effort === 'string') effort = facts.effort;
 		if (typeof facts?.context === 'number') contextTokens = facts.context;
+		if (typeof facts?.cache === 'number') cacheTurn = facts.cache;
 	};
 	const persistSessionCounters = (): void => {
 		cmd.session?.appendCustomEntry({customType: CACHE_ENTRY, data: {read: sessionRead, total: sessionTotal}});
 		// Session-stable facts, so the first paint after a reload shows them rather than a
 		// half-empty footer. The turn cost is not persisted: there has been no turn in
 		// this process, and a stale figure would be a lie.
-		cmd.session?.appendCustomEntry({customType: SESSION_ENTRY, data: {model, context: contextTokens}});
+		cmd.session?.appendCustomEntry({
+			customType: SESSION_ENTRY,
+			data: {model, effort, context: contextTokens, cache: cacheTurn},
+		});
 	};
 
 	const refresh = (): void => {
@@ -873,7 +882,10 @@ export default function (cmd: ModApi): void {
 		// Durable as soon as they are known, not only at turn end: the first turn on a new
 		// build is then already restorable by the next reload, instead of needing one full
 		// turn under the new build first.
-		cmd.session?.appendCustomEntry({customType: SESSION_ENTRY, data: {model, context: contextTokens}});
+		cmd.session?.appendCustomEntry({
+			customType: SESSION_ENTRY,
+			data: {model, effort, context: contextTokens, cache: cacheTurn},
+		});
 		recentTurns.push([input, read, written]);
 		if (recentTurns.length > 5) recentTurns.shift();
 		const cost = estimateCost(model, usage);
@@ -987,7 +999,9 @@ export default function (cmd: ModApi): void {
 				return {
 					message: [
 						'proflow context',
-						`  session  model ${model ?? '-'}  ctx ${contextTokens === null ? '-' : count(contextTokens)}  avg ${
+						`  session  model ${model ?? '-'}${effort ? ' ' + effort : ''}  ctx ${
+							contextTokens === null ? '-' : count(contextTokens)
+						}  cache ${cacheTurn === null ? '-' : cacheTurn.toFixed(1) + '%'}  avg ${
 							sessionTotal > 0 ? ((sessionRead / sessionTotal) * 100).toFixed(2) : '-'
 						}%`,
 						`  process  rounds ${prefixRounds}  prefix ${prefixHash || '(none yet)'}${drift}`,
