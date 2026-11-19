@@ -1,6 +1,6 @@
 {
 	"name": "@ultra-cmd/cmd-profiles",
-	"version": "0.1.20",
+	"version": "0.1.21",
 	"description": "Run Command Code as more than one identity on one machine — a named profile per home, resolved fail-closed.",
 	"license": "MIT",
 	"type": "module",
