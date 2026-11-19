@@ -1,0 +1,44 @@
+schema_version: "1.0"
+
+preset:
+  id: "question-tool"
+  name: "Question Tool"
+  version: "1.0.0"
+  description: "Routes every Spec Kit decision stop through the question tool instead of printing a Markdown table and waiting for prose in the next turn."
+  author: "proflow"
+  repository: "https://github.com/nntoan/proflow"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.6.0"
+
+# The upstream commands present a decision as a Markdown table and then instruct the model to
+# "wait for user response" in prose. That is a decision stop with no tool call: the turn can end
+# with the decision still open, which is the failure docs/spec/question-tool-gate/SPEC.md records.
+#
+# `wrap` rather than `replace` is deliberate. A full fork would duplicate several hundred lines of
+# upstream prose and go stale on every Spec Kit release; the constitution's Principle I asks for a
+# declarative layer that survives upstream drift rather than a copy that silently diverges. The
+# wrapper states plainly that it supersedes the rendering step, because the core body remains in
+# the composed output and now says something different.
+provides:
+  templates:
+    - type: "command"
+      name: "speckit.specify"
+      file: "commands/speckit.specify.md"
+      description: "Specify, with the clarification stop routed through the question tool"
+      replaces: "speckit.specify"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.clarify"
+      file: "commands/speckit.clarify.md"
+      description: "Clarify, with each clarification asked through the question tool"
+      replaces: "speckit.clarify"
+      strategy: "wrap"
+
+tags:
+  - "question-tool"
+  - "gate"
+  - "workflow"
+  - "core"
