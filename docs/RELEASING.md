@@ -1,6 +1,6 @@
 # Releasing proflow
 
-The workspace publishes **six packages** from one tag. Releases run over **npm trusted publishing
+The workspace publishes **seven packages** from one tag. Releases run over **npm trusted publishing
 (OIDC)** — there is no `NPM_TOKEN` in this repository, and no long-lived secret in CI at all.
 
 | Package | Contents | State |
@@ -11,10 +11,11 @@ The workspace publishes **six packages** from one tag. Releases run over **npm t
 | `@ultra-cmd/mod-codegraph` | read-only CodeGraph tools | new scope |
 | `@ultra-cmd/mod-gh` | the `gh` tools | new scope |
 | `@ultra-cmd/mod-orca` | the `orca` tools | new scope |
+| `@ultra-cmd/cmd-profiles` | the `cmd-profiles` launcher for running several Command Code identities on one machine | new scope |
 
-`@nntoan/proflow` **depends on** the five `@ultra-cmd/*` packages, so publishing order matters: the
-installer goes last, or a consumer can resolve it before the payloads it copies exist. The workflow
-handles this; do the same when publishing by hand.
+`@nntoan/proflow` **depends on** five of the `@ultra-cmd/*` packages (not `cmd-profiles`, which is
+installed separately), so publishing order matters: the installer goes last, or a consumer can resolve it
+before the payloads it copies exist. The workflow handles this; do the same when publishing by hand.
 
 ---
 
@@ -42,13 +43,14 @@ The version in the manifests is the one you are releasing. Payloads first, insta
 
 ```bash
 npm install                                        # link the workspaces
-npm test                                           # all six must be green
+npm test                                           # all seven packages must be green
 npm publish --access public --workspace @ultra-cmd/proflow
 npm publish --access public --workspace @ultra-cmd/magento2
 npm publish --access public --workspace @ultra-cmd/mod-codegraph
 npm publish --access public --workspace @ultra-cmd/mod-gh
 npm publish --access public --workspace @ultra-cmd/mod-orca
-npm publish --access public --workspace @nntoan/proflow   # last: it depends on the five above
+npm publish --access public --workspace @ultra-cmd/cmd-profiles   # independent: no one depends on it
+npm publish --access public --workspace @nntoan/proflow   # last: it depends on the five payloads above
 ```
 
 Notes:

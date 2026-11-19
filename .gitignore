@@ -1,19 +1,25 @@
 node_modules/
 .commandcode/
 .codegraph/
+.cursor/
+.omc/
+.specify/*
 *.log
 .DS_Store
 
 # proflow spec directories: only the specification is versioned. The recon and
 # reflection artifacts (IDEA.md, explore-brief.md, review-log.md, …) are working
 # notes — they stay with the session that produced them, not in git.
+tasks/
+plans/
 docs/spec/*
+docs/spec/*/*
+
 
 # The running plan and task list, local like docs/spec's siblings. The directory is part of
 # the harness's workflow — it stays on disk — but it is per-session state, never versioned.
-tasks/
+!.specify/memory/constitution.md
 !docs/spec/*/
-docs/spec/*/*
 !docs/spec/*/SPEC.md
 
 # Research notes: read locally, never versioned.

@@ -247,6 +247,11 @@ export function buildPlan(opts, selection) {
 		else (plan.modFiles ??= []).push({name, src: join(mod, MODS[name].file), dest: join(ccDir, 'mods', basename(MODS[name].file))});
 	}
 
+	// The profile launcher is a separate published package with its own `bin`
+	// (`@ultra-cmd/cmd-profiles`). It is deliberately NOT installed or linked by this installer: doing so
+	// would be a global side effect from a project-scoped command. A host that provisions people
+	// installs it explicitly — see packages/cmd-profiles/docs/README.md.
+
 	plan.config = join(content, CONFIG_NAMES[1]);
 	return plan;
 }
