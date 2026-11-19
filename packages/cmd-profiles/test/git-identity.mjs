@@ -95,10 +95,13 @@ check('THE REGRESSION — a commit through a profile is authored by the machine 
 	if (user) assert.doesNotMatch(author, new RegExp(`^${user} `), 'must not fall back to user@hostname');
 });
 
-check('CONTROL — without GIT_CONFIG_GLOBAL the same commit IS mis-attributed', () => {
-	// This asserts the bug is real and that the previous check is not passing vacuously. If git
-	// ever stops falling back to user@hostname, this control fails and the test above should be
-	// re-examined rather than trusted.
+check('CONTROL — without GIT_CONFIG_GLOBAL the machine identity is lost', () => {
+	// This asserts the bug is real: the fix is not passing vacuously. What "lost" looks like differs
+	// by platform, and the difference is itself the point:
+	//   - macOS, with a machine identity reachable: git falls back to user@hostname and commits.
+	//   - Linux CI, with no identity anywhere: git refuses — "empty ident name not allowed".
+	// Both mean the machine identity is gone. Asserting only one of them encodes a platform quirk as
+	// a universal truth, which is how this test failed on its first CI run.
 	const machine = machineHome('d');
 	const profile = join(tmp, 'profile-d');
 	mkdirSync(profile, {recursive: true});
@@ -111,9 +114,18 @@ check('CONTROL — without GIT_CONFIG_GLOBAL the same commit IS mis-attributed',
 	};
 	delete brokenEnv.GIT_CONFIG_GLOBAL;
 
-	git(['commit', '-qm', 'test'], {cwd: repo, env: brokenEnv});
-	const author = git(['log', '-1', '--format=%ae'], {cwd: repo, env: brokenEnv});
+	let author;
+	try {
+		git(['commit', '-qm', 'test'], {cwd: repo, env: brokenEnv});
+		author = git(['log', '-1', '--format=%ae'], {cwd: repo, env: brokenEnv});
+	} catch (error) {
+		// The Linux path: git refused because it could find no identity at all. That is the stronger
+		// form of "the machine identity is lost", so the control is satisfied.
+		assert.match(String(error.stderr ?? error.message), /empty ident name|Author identity unknown/);
+		return;
+	}
 
+	// The macOS path: it committed, and it must not have used the machine's address.
 	assert.notEqual(
 		author,
 		'machine@example.com',
